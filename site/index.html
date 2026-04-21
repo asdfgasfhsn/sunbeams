@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sunbeams is one binary that synthesises the EDID, drives Sunshine's display switching, and installs itself on Bazzite — so one virtual display speaks almost every client's native resolution.">
+  <title>sunbeams — one virtual display, almost every client resolution</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#install">Skip to install</a>
+
+  <nav class="sb-nav container" aria-label="Primary">
+    <a href="#" class="sb-wordmark">sunbeams<span class="sb-dot">.</span></a>
+    <ul class="sb-nav-links">
+      <li><a href="#install">install</a></li>
+      <li><a href="#what">what</a></li>
+      <li><a href="#devices">devices</a></li>
+      <li><a href="https://github.com/asdfgasfhsn/sunbeams" rel="noopener">github ↗</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="hero" class="sb-hero">
+      <div class="container">
+        <p class="sb-hero-kicker">headless &middot; virtual &middot; streaming</p>
+        <h1 class="sb-hero-lede">
+          One virtual display.<br>
+          Almost <em>every</em> client resolution.
+        </h1>
+        <p class="sb-hero-sub">
+          One binary that synthesises the EDID, drives Sunshine&rsquo;s display switching under Wayland, and installs itself cleanly on Bazzite.
+        </p>
+      </div>
+    </section>
+    <section id="install" class="sb-install section">
+      <div class="container">
+        <p class="label">install</p>
+      </div>
+      <div class="sb-term-wrap">
+        <div class="sb-term">
+          <div class="sb-term-head">
+            <span class="sb-term-path">~/bazzite</span>
+            <button class="sb-copy" type="button" data-copy-target="install-cmd"
+                    aria-label="Copy install command to clipboard">
+              <span data-copy-label aria-live="polite">[copy]</span>
+            </button>
+          </div>
+<pre class="sb-term-body" id="install-cmd"><span class="p">$</span> curl -sSL https://asdfgasfhsn.github.io/sunbeams/install.sh | sh</pre>
+        </div>
+      </div>
+      <div class="container">
+        <p class="sb-install-hint">
+          Installs to <code>/usr/local/bin/sunbeams</code>. Bazzite Desktop, KDE Plasma on Wayland.
+        </p>
+        <p class="sb-install-more">
+          <a href="#quickstart">See the full end-to-end flow &rarr;</a>
+        </p>
+      </div>
+    </section>
+
+    <section id="what" class="sb-what section">
+      <div class="container">
+        <p class="label">what sunbeams does</p>
+        <h2 class="sb-what-heading">One binary, three jobs.</h2>
+        <div class="sb-rows">
+          <article class="sb-row">
+            <div class="sb-row-verb">
+              <span class="sb-bracket">[generate]</span>
+              <p>Synthesises the EDID</p>
+            </div>
+            <div class="sb-row-body">
+              <code class="sb-row-cmd"><span class="sb-prompt">$</span> sunbeams generate</code>
+              <p>Packs every target resolution — 4K, ultrawide, MacBook, iPad, phones, handhelds — into a single EDID binary with HDR10 metadata and wide range limits. Outputs helper scripts for modes that exceed the EDID pixel-clock ceiling.</p>
+            </div>
+          </article>
+          <article class="sb-row">
+            <div class="sb-row-verb">
+              <span class="sb-bracket">[install]</span>
+              <p>Installs on Bazzite</p>
+            </div>
+            <div class="sb-row-body">
+              <code class="sb-row-cmd"><span class="sb-prompt">$</span> sudo sunbeams install</code>
+              <p>Scans <code>/sys/class/drm</code> for a free connector, writes the EDID to <code>/etc/firmware/</code> (bypassing the immutable <code>/usr</code>), and injects <code>firmware_class.path</code>, <code>drm.edid_firmware</code>, and <code>video=</code> kernel arguments via <code>rpm-ostree kargs</code>.</p>
+            </div>
+          </article>
+          <article class="sb-row">
+            <div class="sb-row-verb">
+              <span class="sb-bracket">[switch]</span>
+              <p>Switches the display</p>
+            </div>
+            <div class="sb-row-body">
+              <code class="sb-row-cmd"><span class="sb-prompt">$</span> sunbeams switch on  /  off</code>
+              <p>Wires into Sunshine's Do/Undo prep commands. Reads <code>SUNSHINE_CLIENT_*</code>, snaps the request to the nearest configured mode, drives <code>kscreen-doctor</code> in one atomic call, and logs every decision to stderr.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="devices" class="sb-devices section">
+      <div class="container">
+        <p class="label">your devices, one display</p>
+        <h2 class="sb-devices-heading">Baked into the default EDID. Sized by pixel count.</h2>
+        <ul class="sb-mosaic">
+          <li class="sb-tile" style="--w:3840;--h:2160;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">4K OLED</span>
+              <span class="sb-tile-res">3840 × 2160</span>
+              <span class="sb-tile-tag">@60 · HDR10</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:3440;--h:1440;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">Ultrawide</span>
+              <span class="sb-tile-res">3440 × 1440</span>
+              <span class="sb-tile-tag">@100</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:3024;--h:1964;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">MacBook Pro 14"</span>
+              <span class="sb-tile-res">3024 × 1964</span>
+              <span class="sb-tile-tag">@120</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:2560;--h:1440;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">1440p</span>
+              <span class="sb-tile-res">2560 × 1440</span>
+              <span class="sb-tile-tag">@144</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:2420;--h:1668;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">iPad Pro 11"</span>
+              <span class="sb-tile-res">2420 × 1668</span>
+              <span class="sb-tile-tag">@120</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:2400;--h:1080;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">Android phone</span>
+              <span class="sb-tile-res">2400 × 1080</span>
+              <span class="sb-tile-tag">@60</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:1920;--h:1080;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">1080p</span>
+              <span class="sb-tile-res">1920 × 1080</span>
+              <span class="sb-tile-tag">@120</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:1280;--h:800;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">Steam Deck</span>
+              <span class="sb-tile-res">1280 × 800</span>
+              <span class="sb-tile-tag">@60</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:960;--h:544;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">PS Vita</span>
+              <span class="sb-tile-res">960 × 544</span>
+              <span class="sb-tile-tag">@60</span>
+            </div>
+          </li>
+          <li class="sb-tile" style="--w:480;--h:272;">
+            <div class="sb-tile-screen"></div>
+            <div class="sb-tile-cap">
+              <span class="sb-tile-name">PSP</span>
+              <span class="sb-tile-res">480 × 272</span>
+              <span class="sb-tile-tag">@60</span>
+            </div>
+          </li>
+          <li class="sb-tile sb-tile--more">
+            <a href="https://github.com/asdfgasfhsn/sunbeams#supported-devices-default">
+              + more · <code>sunbeams devices</code>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="quickstart" class="sb-quickstart section">
+      <div class="container">
+        <p class="label">quick start</p>
+        <h2 class="sb-quickstart-heading">End-to-end on a Bazzite box.</h2>
+      </div>
+      <div class="sb-term-wrap">
+        <div class="sb-term">
+          <div class="sb-term-head">
+            <span class="sb-term-path">~/bazzite</span>
+            <span class="sb-term-prompt">$</span>
+          </div>
+<pre class="sb-term-body"><span class="c">#  1. generate the EDID + helper scripts</span>
+<span class="p">$</span> sunbeams generate
+
+<span class="c">#  2. install: EDID → /etc/firmware, kernel args via rpm-ostree, then reboot</span>
+<span class="p">$</span> sudo sunbeams install
+
+<span class="c">#  3. inspect what the EDID exposes</span>
+<span class="p">$</span> sunbeams devices
+<span class="p">$</span> sunbeams modes
+
+<span class="c">#  4. wire into Sunshine → General → prep commands:</span>
+<span class="c">#     Do:   sunbeams switch on</span>
+<span class="c">#     Undo: sunbeams switch off</span></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="sb-footer container">
+    <p class="sb-footer-meta">MIT · sunbeams · headless streaming, honestly</p>
+    <nav class="sb-footer-links" aria-label="Project links">
+      <a href="https://github.com/asdfgasfhsn/sunbeams">GitHub</a>
+      <a href="https://github.com/asdfgasfhsn/sunbeams/releases">Releases</a>
+      <a href="https://github.com/asdfgasfhsn/sunbeams#readme">README</a>
+      <a href="https://github.com/asdfgasfhsn/sunbeams/tree/main/docs">Docs</a>
+    </nav>
+  </footer>
+
+  <script>
+    (function () {
+      function init() {
+        var btn = document.querySelector('[data-copy-target]');
+        if (!btn) return;
+        var target = document.getElementById(btn.getAttribute('data-copy-target'));
+        if (!target) return;
+        var label = btn.querySelector('[data-copy-label]');
+        btn.addEventListener('click', function () {
+          var text = target.textContent.replace(/^\s*\$\s*/, '').trim();
+          if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            flash('[unsupported]');
+            return;
+          }
+          navigator.clipboard.writeText(text).then(
+            function () { flash('[copied]'); },
+            function () { flash('[failed]'); }
+          );
+        });
+        function flash(msg) {
+          if (!label) return;
+          var original = label.textContent;
+          label.textContent = msg;
+          setTimeout(function () { label.textContent = original; }, 2000);
+        }
+      }
+      if (document.readyState !== 'loading') { init(); }
+      else { document.addEventListener('DOMContentLoaded', init); }
+    })();
+  </script>
+</body>
+</html>

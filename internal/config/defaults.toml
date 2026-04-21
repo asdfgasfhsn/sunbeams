@@ -1,0 +1,364 @@
+[edid]
+manufacturer_id = "VRT"
+product_code = 0x2025
+serial = 1
+week = 1
+year = 2025
+monitor_name = "VirtStream"
+max_pixel_clock_mhz = 1700
+min_vrate = 24
+max_vrate = 300
+min_hrate = 15
+max_hrate = 400
+max_tmds_mhz = 600
+max_frl_rate = 6
+
+[cta]
+# Order matters: Y420CMDB bitmap indexes into this list by position.
+# Keep 4K entries grouped at the head so the bitmap fits in one byte.
+vic_codes = [97, 118, 117, 96, 95, 94, 93, 16, 63, 34, 33, 32, 31, 4, 47, 19, 1]
+# VICs above that also advertise YCbCr 4:2:0 support (fallback for HDMI 2.0
+# 600 MHz TMDS ceiling at 4K@60/100/120).
+y420_vics = [97, 118, 117]
+
+[[standard_timings]]
+width = 1920
+height = 1080
+refresh = 60
+
+[[standard_timings]]
+width = 1920
+height = 1080
+refresh = 120
+
+[[standard_timings]]
+width = 2560
+height = 1440
+refresh = 60
+
+[[standard_timings]]
+width = 2560
+height = 1440
+refresh = 120
+
+[[standard_timings]]
+width = 1920
+height = 1200
+refresh = 60
+
+[[standard_timings]]
+width = 1280
+height = 720
+refresh = 60
+
+[[standard_timings]]
+width = 1600
+height = 900
+refresh = 60
+
+[[standard_timings]]
+width = 1680
+height = 1050
+refresh = 60
+
+# Devices (same order + values as devices.py)
+[[devices]]
+slug = "sony-4k"
+label = 'Sony 65" OLED / Sony 55" / Samsung 55"'
+width = 3840
+height = 2160
+max_refresh = 120
+hdr = true
+
+[[devices]]
+slug = "m28u"
+label = "Gigabyte M28U"
+width = 3840
+height = 2160
+max_refresh = 144
+hdr = true
+
+[[devices]]
+slug = "benq"
+label = "BenQ EX3415R"
+width = 3440
+height = 1440
+max_refresh = 144
+hdr = true
+
+[[devices]]
+slug = "macbook"
+label = 'MacBook Pro 14" (M3 Max)'
+width = 3024
+height = 1964
+max_refresh = 120
+hdr = true
+
+[[devices]]
+slug = "ipad-m4"
+label = 'iPad Pro 11" (M4/M5)'
+width = 2420
+height = 1668
+max_refresh = 120
+hdr = true
+
+[[devices]]
+slug = "ipad-m2"
+label = 'iPad Pro 11" (M2)'
+width = 2388
+height = 1668
+max_refresh = 120
+hdr = true
+
+[[devices]]
+slug = "tab-a9"
+label = "Samsung Tab A9+"
+width = 1920
+height = 1200
+max_refresh = 60
+hdr = false
+
+[[devices]]
+slug = "vita"
+label = "PS Vita"
+width = 960
+height = 544
+max_refresh = 60
+hdr = false
+
+[[devices]]
+slug = "psp"
+label = "PSP"
+width = 480
+height = 272
+max_refresh = 60
+hdr = false
+
+# Modes (same order + values as ALL_MODES in devices.py)
+[[modes]]
+width = 3840
+height = 2160
+refresh = 60
+description = "4K SDR/HDR — TVs, M28U (standard)"
+
+[[modes]]
+width = 3840
+height = 2160
+refresh = 120
+description = "4K 120Hz — Sony OLEDs, TVs, M28U"
+
+[[modes]]
+width = 3840
+height = 2160
+refresh = 144
+description = "4K 144Hz — Gigabyte M28U max"
+
+[[modes]]
+width = 3840
+height = 2160
+refresh = 240
+description = "4K 240Hz — MSI 321URX / 4K OLED flagship"
+
+[[modes]]
+width = 5120
+height = 1440
+refresh = 120
+description = "Super-ultrawide 120Hz — Samsung Odyssey G9"
+
+[[modes]]
+width = 3440
+height = 1440
+refresh = 175
+description = "Ultrawide 175Hz — Alienware AW3423DW native"
+
+[[modes]]
+width = 3440
+height = 1440
+refresh = 144
+description = "Ultrawide 144Hz — BenQ EX3415R"
+
+[[modes]]
+width = 3440
+height = 1440
+refresh = 120
+description = "Ultrawide 120Hz — BenQ via HDMI"
+
+[[modes]]
+width = 3440
+height = 1440
+refresh = 60
+description = "Ultrawide 60Hz — fallback"
+
+[[modes]]
+width = 3120
+height = 1440
+refresh = 120
+description = "Samsung Galaxy S24 Ultra / S-series"
+
+[[modes]]
+width = 3120
+height = 1440
+refresh = 60
+description = "Samsung Galaxy S-series — 60Hz fallback"
+
+[[modes]]
+width = 3024
+height = 1964
+refresh = 120
+description = 'MacBook Pro 14" native'
+
+[[modes]]
+width = 3024
+height = 1964
+refresh = 60
+description = 'MacBook Pro 14" — 60Hz fallback'
+
+[[modes]]
+width = 2880
+height = 1920
+refresh = 60
+description = "Pixel Tablet / high-res 3:2 tablet"
+
+[[modes]]
+width = 2560
+height = 1600
+refresh = 144
+description = "Steam Deck OLED / 16\" laptops"
+
+[[modes]]
+width = 2560
+height = 1600
+refresh = 60
+description = "Steam Deck OLED — 60Hz fallback"
+
+[[modes]]
+width = 2560
+height = 1440
+refresh = 240
+description = "QHD 240Hz — LG 27GR95QE / QHD OLED"
+
+[[modes]]
+width = 2560
+height = 1440
+refresh = 144
+description = "QHD 144Hz"
+
+[[modes]]
+width = 2560
+height = 1440
+refresh = 120
+description = "QHD 120Hz"
+
+[[modes]]
+width = 2560
+height = 1440
+refresh = 60
+description = "QHD 60Hz"
+
+[[modes]]
+width = 2420
+height = 1668
+refresh = 120
+description = 'iPad Pro 11" M4/M5 native'
+
+[[modes]]
+width = 2420
+height = 1668
+refresh = 60
+description = 'iPad Pro 11" M4/M5 — 60Hz fallback'
+
+[[modes]]
+width = 2388
+height = 1668
+refresh = 120
+description = 'iPad Pro 11" M2 native'
+
+[[modes]]
+width = 2388
+height = 1668
+refresh = 60
+description = 'iPad Pro 11" M2 — 60Hz fallback'
+
+[[modes]]
+width = 2340
+height = 1080
+refresh = 120
+description = "Android phones (19.5:9)"
+
+[[modes]]
+width = 2340
+height = 1080
+refresh = 60
+description = "Android phones (19.5:9) — 60Hz fallback"
+
+[[modes]]
+width = 2305
+height = 1080
+refresh = 120
+description = "Android phones (21.5:9)"
+
+[[modes]]
+width = 2305
+height = 1080
+refresh = 60
+description = "Android phones (21.5:9) — 60Hz fallback"
+
+[[modes]]
+width = 1920
+height = 1200
+refresh = 60
+description = "WUXGA — Samsung Tab A9+"
+
+[[modes]]
+width = 1920
+height = 1080
+refresh = 240
+description = "FHD 240Hz — esports / 1080p OLED"
+
+[[modes]]
+width = 1920
+height = 1080
+refresh = 144
+description = "FHD 144Hz — high-refresh gaming"
+
+[[modes]]
+width = 1920
+height = 1080
+refresh = 120
+description = "FHD 120Hz — common gaming"
+
+[[modes]]
+width = 1920
+height = 1080
+refresh = 60
+description = "FHD 60Hz — universal fallback"
+
+[[modes]]
+width = 1280
+height = 800
+refresh = 90
+description = "Steam Deck OLED native 90Hz"
+
+[[modes]]
+width = 1280
+height = 800
+refresh = 60
+description = "Steam Deck LCD / WXGA"
+
+[[modes]]
+width = 1280
+height = 720
+refresh = 60
+description = "HD 720p — low-bandwidth fallback"
+
+[[modes]]
+width = 960
+height = 544
+refresh = 60
+description = "PS Vita native"
+
+[[modes]]
+width = 480
+height = 272
+refresh = 60
+description = "PSP native"

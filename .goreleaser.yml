@@ -1,0 +1,36 @@
+version: 2
+project_name: sunbeams
+builds:
+  - id: sunbeams
+    main: ./cmd/sunbeams
+    binary: sunbeams
+    env:
+      - CGO_ENABLED=0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+archives:
+  - id: default
+    formats: [tar.gz]
+    files:
+      - README.md
+      - LICENSE
+      - CONTRIBUTING.md
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+release:
+  github:
+    owner: asdfgasfhsn
+    name: sunbeams

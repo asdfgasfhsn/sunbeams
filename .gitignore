@@ -1,0 +1,40 @@
+# Generated outputs
+virtual_display.bin
+add_custom_modes.sh
+sunshine_commands.txt
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local overrides
+CLAUDE.local.md
+
+# direnv / nix
+.direnv/
+.envrc.local
+
+# Go build outputs
+/sunbeams
+/sunbeams-*
+
+# Git worktrees
+.worktrees/
+
+
+# brainstorming visual companion
+.superpowers/
