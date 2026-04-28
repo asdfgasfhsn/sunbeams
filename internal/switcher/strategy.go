@@ -59,10 +59,10 @@ type KScreenStrategy struct{}
 
 func (*KScreenStrategy) Name() string { return "kscreen" }
 func (*KScreenStrategy) SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int, hdr bool) error {
-	return SwitchOn(cfg, outs, w, h, fps, hdr) // delegate during refactor
+	return switchOnKScreen(cfg, outs, w, h, fps, hdr)
 }
 func (*KScreenStrategy) SwitchOff(outs Outputs) error {
-	return SwitchOff(outs)
+	return switchOffKScreen(outs)
 }
 
 // GamescopeStrategy is the gaming-mode switcher. Body filled in by Tasks 7-8.
