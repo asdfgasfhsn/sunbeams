@@ -362,3 +362,18 @@ width = 480
 height = 272
 refresh = 60
 description = "PSP native"
+
+[gaming]
+# Helper binary path. Installer always writes to and the sudoers grant always
+# references /usr/local/sbin/sunbeams-drm-force. Overriding this only changes
+# what `switch on/off` invokes — you would also need to install the helper at
+# the new path manually and adjust /etc/sudoers.d/sunbeams-drm-switch to match.
+helper_path = "/usr/local/sbin/sunbeams-drm-force"
+
+# Path to gamescope modes.cfg, relative to $HOME.
+modes_cfg = ".config/gamescope/modes.cfg"
+
+# Safe-revert mode for `switch off`. Empty = pick the first entry in [[modes]]
+# (config-file order) whose width<=1920, height<=1080, refresh<=60. Falls back
+# to "1920x1080@60" if no [[modes]] entry qualifies.
+safe_revert_mode = ""
