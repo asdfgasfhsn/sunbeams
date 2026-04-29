@@ -64,16 +64,3 @@ func (*KScreenStrategy) SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int
 func (*KScreenStrategy) SwitchOff(outs Outputs) error {
 	return switchOffKScreen(outs)
 }
-
-// GamescopeStrategy is the gaming-mode switcher. Body filled in by Tasks 7-8.
-type GamescopeStrategy struct {
-	Opts Options
-}
-
-func (*GamescopeStrategy) Name() string { return "debugfs" }
-func (*GamescopeStrategy) SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int, hdr bool) error {
-	return fmt.Errorf("debugfs strategy not implemented yet")
-}
-func (*GamescopeStrategy) SwitchOff(outs Outputs) error {
-	return fmt.Errorf("debugfs strategy not implemented yet")
-}
