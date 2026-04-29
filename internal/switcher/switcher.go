@@ -2,8 +2,6 @@ package switcher
 
 import (
 	"os"
-
-	"github.com/asdfgasfhsn/sunbeams/internal/config"
 )
 
 // Outputs names the connectors involved. Empty fields fall back to env
@@ -33,15 +31,4 @@ func (o Outputs) resolve() (virt, phys, virtSrc, physSrc string) {
 		}
 	}
 	return
-}
-
-// SwitchOn is a backward-compatible facade dispatching to the kscreen strategy.
-// New code should call Select(...).SwitchOn(...) directly. Removed in Task 5.
-func SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int, hdr bool) error {
-	return switchOnKScreen(cfg, outs, w, h, fps, hdr)
-}
-
-// SwitchOff is a backward-compatible facade. Removed in Task 5.
-func SwitchOff(outs Outputs) error {
-	return switchOffKScreen(outs)
 }

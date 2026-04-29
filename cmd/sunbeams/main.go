@@ -179,11 +179,25 @@ func runSwitch(args []string) error {
 
 	switch args[0] {
 	case "off":
+		fs := flag.NewFlagSet("switch off", flag.ExitOnError)
+		strategy := fs.String("strategy", "auto", "auto|kscreen|debugfs")
+		virtual := fs.String("virtual", "", "virtual connector name (overrides $VIRTUAL_OUTPUT)")
+		physical := fs.String("physical", "", "physical connector name (overrides $PHYSICAL_OUTPUT)")
+		noSafeRevert := fs.Bool("no-safe-revert", false, "[debugfs] skip resetting virtual to a safe mode before re-enabling physical")
+		help := subcommandHelps["switch-off"]
+		fs.Usage = func() { renderSubcommandHelp(os.Stderr, help, fs) }
 		if wantsHelp(args[1:]) {
-			renderSubcommandHelp(os.Stdout, subcommandHelps["switch-off"], nil)
+			renderSubcommandHelp(os.Stdout, help, fs)
 			return nil
 		}
-		return switcher.SwitchOff(switcher.Outputs{})
+		_ = fs.Parse(args[1:])
+
+		s, err := switcher.Select(*strategy, switcher.Options{SafeRevert: !*noSafeRevert})
+		if err != nil {
+			return err
+		}
+		return s.SwitchOff(switcher.Outputs{Virtual: *virtual, Physical: *physical})
+
 	case "on":
 		fs := flag.NewFlagSet("switch on", flag.ExitOnError)
 		width := fs.Int("width", envInt("SUNSHINE_CLIENT_WIDTH"), "client width")
@@ -191,6 +205,10 @@ func runSwitch(args []string) error {
 		fps := fs.Int("fps", envInt("SUNSHINE_CLIENT_FPS"), "client fps")
 		hdrFlag := fs.Bool("hdr", false, "force HDR on")
 		noHDR := fs.Bool("no-hdr", false, "force HDR off")
+		strategy := fs.String("strategy", "auto", "auto|kscreen|debugfs")
+		virtual := fs.String("virtual", "", "virtual connector name (overrides $VIRTUAL_OUTPUT)")
+		physical := fs.String("physical", "", "physical connector name (overrides $PHYSICAL_OUTPUT)")
+		noSafeRevert := fs.Bool("no-safe-revert", false, "[debugfs] meaningful for switch off only; here for parity")
 		cfgPath := fs.String("config", "", "Config file path (default ~/.config/sunbeams/config.toml)")
 		fs.StringVar(cfgPath, "c", "", "Config file path (short)")
 		help := subcommandHelps["switch-on"]
@@ -215,7 +233,13 @@ func runSwitch(args []string) error {
 		if *noHDR {
 			hdr = false
 		}
-		return switcher.SwitchOn(cfg, switcher.Outputs{}, *width, *height, *fps, hdr)
+
+		s, err := switcher.Select(*strategy, switcher.Options{SafeRevert: !*noSafeRevert})
+		if err != nil {
+			return err
+		}
+		return s.SwitchOn(cfg, switcher.Outputs{Virtual: *virtual, Physical: *physical}, *width, *height, *fps, hdr)
+
 	default:
 		return fmt.Errorf("unknown switch subcommand: %s (expected on|off)", args[0])
 	}
