@@ -196,6 +196,15 @@ func runSwitch(args []string) error {
 		if err != nil {
 			return err
 		}
+		// SwitchOff for the debugfs strategy needs the config for modes.cfg edits.
+		// Loading config here is cheap and harmless for kscreen.
+		cfg, err := loadConfig("")
+		if err != nil {
+			return err
+		}
+		if g, ok := s.(*switcher.GamescopeStrategy); ok {
+			g.Configure(cfg)
+		}
 		return s.SwitchOff(switcher.Outputs{Virtual: *virtual, Physical: *physical})
 
 	case "on":

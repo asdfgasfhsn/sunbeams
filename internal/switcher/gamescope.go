@@ -15,11 +15,19 @@ import (
 // debugfs.
 type GamescopeStrategy struct {
 	Opts Options
+	cfg  *config.Config // populated by Configure() for SwitchOff path; read by SwitchOff
 
 	// Test seams. Production code leaves these nil; the methods below
 	// substitute production implementations on first use.
 	runHelper    func(action, connector string) error
 	modesCfgPath func(home string) string
+}
+
+// Configure passes the loaded config to the strategy so SwitchOff has access
+// to cfg.Modes and cfg.Gaming for safe-revert resolution. Called by the CLI
+// after Select() and before SwitchOff().
+func (g *GamescopeStrategy) Configure(cfg *config.Config) {
+	g.cfg = cfg
 }
 
 func (*GamescopeStrategy) Name() string { return "debugfs" }
@@ -100,7 +108,52 @@ func (g *GamescopeStrategy) resolveModesCfgPath(cfgRel string) string {
 	return filepath.Join(home, cfgRel)
 }
 
-// SwitchOff implementation arrives in Task 7.
 func (g *GamescopeStrategy) SwitchOff(outs Outputs) error {
-	return fmt.Errorf("debugfs SwitchOff not implemented yet")
+	if g.cfg == nil {
+		return fmt.Errorf("debugfs SwitchOff requires Configure(cfg) before invocation")
+	}
+	_, phys, _, physSrc := outs.resolve()
+	monitor := g.cfg.EDID.MonitorName
+	if monitor == "" {
+		return fmt.Errorf("cfg.EDID.MonitorName is empty; cannot key modes.cfg edit")
+	}
+
+	info("switch off (debugfs): physical=%s (%s) safe_revert=%t", phys, physSrc, g.Opts.SafeRevert)
+
+	if g.Opts.SafeRevert {
+		w, h, r := safeRevertMode(g.cfg)
+		cfgPath := g.resolveModesCfgPath(g.cfg.Gaming.ModesCfg)
+		if err := g.upsertMode(cfgPath, monitor, w, h, r); err != nil {
+			warn("safe-revert modes.cfg edit failed: %v (continuing with force on)", err)
+		} else {
+			info("modes.cfg safe-reverted to %dx%d@%d", w, h, r)
+		}
+	}
+
+	if err := g.execHelper(g.cfg.Gaming.HelperPath, "on", phys); err != nil {
+		return fmt.Errorf("force on %s: %w", phys, err)
+	}
+	info("debugfs force on: %s", phys)
+	return nil
+}
+
+// safeRevertMode picks the mode used by SwitchOff when --no-safe-revert is
+// not set. Precedence:
+//  1. cfg.Gaming.SafeRevertMode (literal "WxH@R") if non-empty.
+//  2. First entry in cfg.Modes (config-file order) with W<=1920 H<=1080 R<=60.
+//  3. Literal 1920x1080@60.
+func safeRevertMode(cfg *config.Config) (w, h, r int) {
+	if cfg.Gaming.SafeRevertMode != "" {
+		var ww, hh, rr int
+		if _, err := fmt.Sscanf(cfg.Gaming.SafeRevertMode, "%dx%d@%d", &ww, &hh, &rr); err == nil {
+			return ww, hh, rr
+		}
+		warn("cfg.Gaming.safe_revert_mode %q is not WxH@R; falling back to scan", cfg.Gaming.SafeRevertMode)
+	}
+	for _, m := range cfg.Modes {
+		if m.Width <= 1920 && m.Height <= 1080 && m.Refresh <= 60 {
+			return m.Width, m.Height, m.Refresh
+		}
+	}
+	return 1920, 1080, 60
 }
