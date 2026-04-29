@@ -121,7 +121,6 @@ func TestGamescope_SwitchOff_SafeRevertOnByDefault(t *testing.T) {
 	var helperCalls [][]string
 	stub := &GamescopeStrategy{
 		Opts: Options{SafeRevert: true},
-		cfg:  cfg, // injected; production reads it through SwitchOff's caller
 		runHelper: func(action, connector string) error {
 			helperCalls = append(helperCalls, []string{action, connector})
 			return nil
@@ -129,7 +128,7 @@ func TestGamescope_SwitchOff_SafeRevertOnByDefault(t *testing.T) {
 		modesCfgPath: func(_ string) string { return cfgPath },
 	}
 
-	require.NoError(t, stub.SwitchOff(Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
+	require.NoError(t, stub.SwitchOff(cfg, Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
 
 	body, _ := osReadFile(cfgPath)
 	assert.Equal(t, "VirtStream:1280x720@60\n", string(body), "should revert to first qualifying mode")
@@ -150,12 +149,11 @@ func TestGamescope_SwitchOff_NoSafeRevert(t *testing.T) {
 
 	stub := &GamescopeStrategy{
 		Opts:         Options{SafeRevert: false},
-		cfg:          cfg,
 		runHelper:    func(action, connector string) error { return nil },
 		modesCfgPath: func(_ string) string { return cfgPath },
 	}
 
-	require.NoError(t, stub.SwitchOff(Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
+	require.NoError(t, stub.SwitchOff(cfg, Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
 
 	body, _ := osReadFile(cfgPath)
 	assert.Equal(t, "VirtStream:3840x2160@120\n", string(body), "must leave modes.cfg alone")
@@ -178,12 +176,11 @@ func TestGamescope_SwitchOff_FallbackWhenNoQualifyingMode(t *testing.T) {
 
 	stub := &GamescopeStrategy{
 		Opts:         Options{SafeRevert: true},
-		cfg:          cfg,
 		runHelper:    func(action, connector string) error { return nil },
 		modesCfgPath: func(_ string) string { return cfgPath },
 	}
 
-	require.NoError(t, stub.SwitchOff(Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
+	require.NoError(t, stub.SwitchOff(cfg, Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
 
 	body, _ := osReadFile(cfgPath)
 	assert.Equal(t, "VirtStream:1920x1080@60\n", string(body))
@@ -205,12 +202,11 @@ func TestGamescope_SwitchOff_ConfigOverrideForSafeRevert(t *testing.T) {
 
 	stub := &GamescopeStrategy{
 		Opts:         Options{SafeRevert: true},
-		cfg:          cfg,
 		runHelper:    func(action, connector string) error { return nil },
 		modesCfgPath: func(_ string) string { return cfgPath },
 	}
 
-	require.NoError(t, stub.SwitchOff(Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
+	require.NoError(t, stub.SwitchOff(cfg, Outputs{Virtual: "VirtStream", Physical: "HDMI-A-1"}))
 
 	body, _ := osReadFile(cfgPath)
 	assert.Equal(t, "VirtStream:1024x768@30\n", string(body))

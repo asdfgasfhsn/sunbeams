@@ -15,19 +15,11 @@ import (
 // debugfs.
 type GamescopeStrategy struct {
 	Opts Options
-	cfg  *config.Config // populated by Configure() for SwitchOff path; read by SwitchOff
 
 	// Test seams. Production code leaves these nil; the methods below
 	// substitute production implementations on first use.
 	runHelper    func(action, connector string) error
 	modesCfgPath func(home string) string
-}
-
-// Configure passes the loaded config to the strategy so SwitchOff has access
-// to cfg.Modes and cfg.Gaming for safe-revert resolution. Called by the CLI
-// after Select() and before SwitchOff().
-func (g *GamescopeStrategy) Configure(cfg *config.Config) {
-	g.cfg = cfg
 }
 
 func (*GamescopeStrategy) Name() string { return "debugfs" }
@@ -108,12 +100,12 @@ func (g *GamescopeStrategy) resolveModesCfgPath(cfgRel string) string {
 	return filepath.Join(home, cfgRel)
 }
 
-func (g *GamescopeStrategy) SwitchOff(outs Outputs) error {
-	if g.cfg == nil {
-		return fmt.Errorf("debugfs SwitchOff requires Configure(cfg) before invocation")
+func (g *GamescopeStrategy) SwitchOff(cfg *config.Config, outs Outputs) error {
+	if cfg == nil {
+		return fmt.Errorf("debugfs SwitchOff requires non-nil cfg")
 	}
 	_, phys, _, physSrc := outs.resolve()
-	monitor := g.cfg.EDID.MonitorName
+	monitor := cfg.EDID.MonitorName
 	if monitor == "" {
 		return fmt.Errorf("cfg.EDID.MonitorName is empty; cannot key modes.cfg edit")
 	}
@@ -121,8 +113,8 @@ func (g *GamescopeStrategy) SwitchOff(outs Outputs) error {
 	info("switch off (debugfs): physical=%s (%s) safe_revert=%t", phys, physSrc, g.Opts.SafeRevert)
 
 	if g.Opts.SafeRevert {
-		w, h, r := safeRevertMode(g.cfg)
-		cfgPath := g.resolveModesCfgPath(g.cfg.Gaming.ModesCfg)
+		w, h, r := safeRevertMode(cfg)
+		cfgPath := g.resolveModesCfgPath(cfg.Gaming.ModesCfg)
 		if err := g.upsertMode(cfgPath, monitor, w, h, r); err != nil {
 			warn("safe-revert modes.cfg edit failed: %v (continuing with force on)", err)
 		} else {
@@ -130,7 +122,7 @@ func (g *GamescopeStrategy) SwitchOff(outs Outputs) error {
 		}
 	}
 
-	if err := g.execHelper(g.cfg.Gaming.HelperPath, "on", phys); err != nil {
+	if err := g.execHelper(cfg.Gaming.HelperPath, "on", phys); err != nil {
 		return fmt.Errorf("force on %s: %w", phys, err)
 	}
 	info("debugfs force on: %s", phys)

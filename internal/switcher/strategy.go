@@ -13,7 +13,7 @@ import (
 type Strategy interface {
 	Name() string
 	SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int, hdr bool) error
-	SwitchOff(outs Outputs) error
+	SwitchOff(cfg *config.Config, outs Outputs) error
 }
 
 // Options bundles strategy-specific knobs that can't fit in the shared
@@ -61,6 +61,6 @@ func (*KScreenStrategy) Name() string { return "kscreen" }
 func (*KScreenStrategy) SwitchOn(cfg *config.Config, outs Outputs, w, h, fps int, hdr bool) error {
 	return switchOnKScreen(cfg, outs, w, h, fps, hdr)
 }
-func (*KScreenStrategy) SwitchOff(outs Outputs) error {
+func (*KScreenStrategy) SwitchOff(_ *config.Config, outs Outputs) error {
 	return switchOffKScreen(outs)
 }
