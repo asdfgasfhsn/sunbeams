@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 )
 
 // InstallHelper writes the embedded helper script to dst with mode 0700.
@@ -127,4 +129,17 @@ func PreflightDebugfsPath(connector string) PreflightResult {
 		res.Err = fmt.Errorf("multiple debugfs paths for %s; multi-GPU not supported in v1", connector)
 	}
 	return res
+}
+
+// chownFromUser changes the owner of path to the given user's UID/GID.
+func chownFromUser(path string, u *user.User) error {
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return err
+	}
+	gid, err := strconv.Atoi(u.Gid)
+	if err != nil {
+		return err
+	}
+	return os.Chown(path, uid, gid)
 }

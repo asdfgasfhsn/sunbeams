@@ -23,17 +23,20 @@ func TestRun_RequiresRoot(t *testing.T) {
 	var stdout bytes.Buffer
 	stdin := strings.NewReader("")
 
-	err := Run([]byte("fake-edid"), []byte("fake-modes-script"), stdin, &stdout)
+	err := Run(Options{
+		EDIDBytes:   []byte("fake-edid"),
+		ModesScript: []byte("fake-modes-script"),
+		Stdin:       stdin,
+		Stdout:      &stdout,
+		Gaming:      GamingNo, // EDID-only test, skip gaming block
+	})
 
 	if err == nil {
 		t.Fatal("expected Run to return an error when not root, got nil")
 	}
-
-	const want = "root"
-	if !strings.Contains(strings.ToLower(err.Error()), want) {
-		t.Errorf("error %q does not mention %q", err.Error(), want)
+	if !strings.Contains(strings.ToLower(err.Error()), "root") {
+		t.Errorf("error %q does not mention %q", err.Error(), "root")
 	}
-
 	if stdout.Len() != 0 {
 		t.Errorf("expected no output on stdout before root check, got: %q", stdout.String())
 	}

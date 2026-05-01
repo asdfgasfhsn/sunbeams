@@ -104,7 +104,7 @@ var subcommandHelps = map[string]subcommandHelp{
 		},
 	},
 	"switch-off": {
-		Name:    "switch off",
+		Name:     "switch off",
 		Synopsis: "sunbeams switch off [--strategy auto|kscreen|debugfs] [--virtual <name>] [--physical <name>] [--no-safe-revert]",
 		Summary:  "Deactivate the virtual display.",
 		Description: "Disables the virtual output and re-enables the physical connector.\n" +
@@ -152,15 +152,27 @@ var subcommandHelps = map[string]subcommandHelp{
 	},
 	"install": {
 		Name:     "install",
-		Synopsis: "sudo sunbeams install",
+		Synopsis: "sudo sunbeams install [--with-gaming] [--no-gaming] [--physical <connector>]",
 		Summary:  "Guided Bazzite installer (requires root, reboot afterwards).",
 		Description: "Interactively:\n" +
 			"  1. scans /sys/class/drm for the virtual-display connector\n" +
 			"  2. writes the EDID and add_custom_modes.sh to /etc/firmware/\n" +
 			"  3. injects the drm.edid_firmware kernel argument via rpm-ostree\n" +
 			"  4. installs a systemd user service to apply xrandr modes on login\n" +
-			"A reboot is required for the kernel arg to take effect.",
-		Examples: []string{"sudo sunbeams install"},
+			"  5. optionally sets up gaming mode (gamescope) support:\n" +
+			"       - installs /usr/local/sbin/sunbeams-drm-force helper\n" +
+			"       - installs /etc/sudoers.d/sunbeams-drm-switch fragment\n" +
+			"       - seeds ~/.config/gamescope/modes.cfg with the monitor entry\n" +
+			"A reboot is required for the kernel arg to take effect.\n" +
+			"--with-gaming skips the gaming-mode prompt and installs gaming artifacts.\n" +
+			"--no-gaming skips the gaming-mode prompt and omits gaming artifacts.\n" +
+			"--physical sets the physical connector used by gaming mode (skips prompt).",
+		Examples: []string{
+			"sudo sunbeams install",
+			"sudo sunbeams install --with-gaming",
+			"sudo sunbeams install --with-gaming --physical DP-1",
+			"sudo sunbeams install --no-gaming",
+		},
 	},
 	"version": {
 		Name:     "version",

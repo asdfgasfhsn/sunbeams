@@ -68,11 +68,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "install":
-		if wantsHelp(os.Args[2:]) {
-			renderSubcommandHelp(os.Stdout, subcommandHelps["install"], nil)
-			return
-		}
-		if err := runInstall(); err != nil {
+		if err := runInstall(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
@@ -347,7 +343,19 @@ func runConfig(args []string) error {
 	}
 }
 
-func runInstall() error {
+func runInstall(args []string) error {
+	fs := flag.NewFlagSet("install", flag.ExitOnError)
+	withGaming := fs.Bool("with-gaming", false, "Install gaming-mode artifacts (skip prompt)")
+	noGaming := fs.Bool("no-gaming", false, "Skip gaming-mode artifacts (skip prompt)")
+	physical := fs.String("physical", "", "Physical connector for force-disable (gaming mode only)")
+	help := subcommandHelps["install"]
+	fs.Usage = func() { renderSubcommandHelp(os.Stderr, help, fs) }
+	if wantsHelp(args) {
+		renderSubcommandHelp(os.Stdout, help, fs)
+		return nil
+	}
+	_ = fs.Parse(args)
+
 	cfg, err := loadConfig("")
 	if err != nil {
 		return err
@@ -360,5 +368,25 @@ func runInstall() error {
 	if len(result.HighModes) > 0 {
 		modesScript = []byte(generate.WriteAddCustomModesScript(result))
 	}
-	return installer.Run(result.EDIDBytes, modesScript, os.Stdin, os.Stdout)
+
+	gaming := installer.GamingAsk
+	if *withGaming && *noGaming {
+		return fmt.Errorf("--with-gaming and --no-gaming are mutually exclusive")
+	}
+	if *withGaming {
+		gaming = installer.GamingYes
+	}
+	if *noGaming {
+		gaming = installer.GamingNo
+	}
+
+	return installer.Run(installer.Options{
+		EDIDBytes:         result.EDIDBytes,
+		ModesScript:       modesScript,
+		MonitorName:       cfg.EDID.MonitorName,
+		Stdin:             os.Stdin,
+		Stdout:            os.Stdout,
+		Gaming:            gaming,
+		PhysicalConnector: *physical,
+	})
 }
