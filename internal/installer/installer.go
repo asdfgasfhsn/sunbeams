@@ -197,7 +197,7 @@ func runGamingBlock(opts Options, cons []Connector, r *bufio.Reader, stdout io.W
 		fmt.Fprintf(stdout, "✓ Seeded %s with %s:1920x1080@60\n", modesCfg, opts.MonitorName) //nolint:errcheck
 	}
 
-	fmt.Fprintln(stdout, "\nGaming mode setup complete.")                         //nolint:errcheck
+	fmt.Fprintln(stdout, "\nGaming mode setup complete.")                          //nolint:errcheck
 	fmt.Fprintln(stdout, "Use these Sunshine Do/Undo commands:")                   //nolint:errcheck
 	fmt.Fprintln(stdout, "  Do:   sunbeams switch on  --physical "+physical+" \\") //nolint:errcheck
 	fmt.Fprintln(stdout, "          --width $SUNSHINE_CLIENT_WIDTH \\")            //nolint:errcheck
