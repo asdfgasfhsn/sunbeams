@@ -53,8 +53,8 @@ func Select(name string, opts Options) (Strategy, error) {
 	}
 }
 
-// KScreenStrategy is the existing KDE Plasma switcher. Body filled in by
-// Task 4 (extraction from switcher.go).
+// KScreenStrategy drives kscreen-doctor under KDE Plasma/Wayland. Stateless;
+// ignores Options.SafeRevert (only meaningful for the gamescope strategy).
 type KScreenStrategy struct{}
 
 func (*KScreenStrategy) Name() string { return "kscreen" }

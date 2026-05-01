@@ -37,6 +37,9 @@ func findMonitorMode(body []byte, monitor string) (w, h, r int, have bool) {
 // upsertMonitorMode returns a new file body with the line for `monitor`
 // updated to W x H @ R. If the monitor's line is absent, the new line is
 // appended. Other lines are preserved verbatim.
+//
+// Mirrored in installer.upsertModesCfgLine — keep these in sync (the
+// duplication exists to avoid an installer→switcher import cycle).
 func upsertMonitorMode(body []byte, monitor string, w, h, r int) []byte {
 	newLine := fmt.Sprintf("%s:%dx%d@%d", monitor, w, h, r)
 

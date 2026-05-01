@@ -45,20 +45,18 @@ func TestInstallSudoers_WritesWithMode0440AndValidates(t *testing.T) {
 	assert.True(t, len(body) > 0 && body[len(body)-1] == '\n', "must end with newline (sudoers requirement)")
 }
 
-func TestInstallSudoers_VisudoRejectsBadContent(t *testing.T) {
-	if _, err := exec.LookPath("visudo"); err != nil {
-		t.Skip("visudo not available")
-	}
+func TestInstallSudoers_RejectsEmptyUser(t *testing.T) {
+	// The empty-user guard short-circuits before visudo runs. This pins the
+	// guard's behavior: error is returned, dst is not created. A future test
+	// could exercise the visudo-rejection path with non-empty malformed input.
 	dir := t.TempDir()
 	dst := filepath.Join(dir, "sudoers.d", "sunbeams-drm-switch")
 
-	// Empty user name produces invalid sudoers content.
 	err := InstallSudoers(dst, "", "/usr/local/sbin/sunbeams-drm-force")
 	require.Error(t, err)
 
-	// Destination must NOT have been written.
 	_, statErr := os.Stat(dst)
-	assert.True(t, os.IsNotExist(statErr), "install must abort before writing to dst when visudo fails")
+	assert.True(t, os.IsNotExist(statErr), "install must abort before writing to dst when guard fires")
 }
 
 func TestSeedModesCfg_NewFile(t *testing.T) {

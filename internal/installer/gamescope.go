@@ -83,7 +83,8 @@ func SeedModesCfg(path, monitor string, w, h, r int) error {
 
 // upsertModesCfgLine is the installer-side mirror of switcher.upsertMonitorMode.
 // We duplicate the small amount of logic here to avoid an import cycle (the
-// installer must not depend on the switcher package).
+// installer must not depend on the switcher package). Keep these two
+// functions byte-for-byte equivalent.
 func upsertModesCfgLine(body []byte, monitor string, w, h, r int) []byte {
 	newLine := fmt.Sprintf("%s:%dx%d@%d", monitor, w, h, r)
 

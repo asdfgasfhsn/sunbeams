@@ -36,7 +36,7 @@ type Options struct {
 	Stdout      io.Writer
 
 	Gaming            GamingChoice
-	PhysicalConnector string // empty + GamingAsk -> prompt
+	PhysicalConnector string // empty triggers an interactive prompt when gaming mode is being installed
 }
 
 // Run drives the interactive installer.
