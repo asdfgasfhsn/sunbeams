@@ -38,8 +38,13 @@ cover: ## Produce and open an HTML coverage report
 	go tool cover -html=coverage.out
 
 .PHONY: lint
-lint: ## Run golangci-lint
+lint: ## Run golangci-lint and shellcheck on embedded shell helpers
 	golangci-lint run
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck internal/installer/embed/*.sh; \
+	else \
+		echo "shellcheck not installed; skipping shell lint"; \
+	fi
 
 .PHONY: fmt
 fmt: ## Run gofmt -w on the tree

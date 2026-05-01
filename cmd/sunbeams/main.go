@@ -68,11 +68,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "install":
-		if wantsHelp(os.Args[2:]) {
-			renderSubcommandHelp(os.Stdout, subcommandHelps["install"], nil)
-			return
-		}
-		if err := runInstall(); err != nil {
+		if err := runInstall(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
@@ -179,11 +175,29 @@ func runSwitch(args []string) error {
 
 	switch args[0] {
 	case "off":
+		fs := flag.NewFlagSet("switch off", flag.ExitOnError)
+		strategy := fs.String("strategy", "auto", "auto|kscreen|debugfs")
+		virtual := fs.String("virtual", "", "virtual connector name (overrides $VIRTUAL_OUTPUT)")
+		physical := fs.String("physical", "", "physical connector name (overrides $PHYSICAL_OUTPUT)")
+		noSafeRevert := fs.Bool("no-safe-revert", false, "[debugfs] skip resetting virtual to a safe mode before re-enabling physical")
+		help := subcommandHelps["switch-off"]
+		fs.Usage = func() { renderSubcommandHelp(os.Stderr, help, fs) }
 		if wantsHelp(args[1:]) {
-			renderSubcommandHelp(os.Stdout, subcommandHelps["switch-off"], nil)
+			renderSubcommandHelp(os.Stdout, help, fs)
 			return nil
 		}
-		return switcher.SwitchOff(switcher.Outputs{})
+		_ = fs.Parse(args[1:])
+
+		s, err := switcher.Select(*strategy, switcher.Options{SafeRevert: !*noSafeRevert})
+		if err != nil {
+			return err
+		}
+		cfg, err := loadConfig("")
+		if err != nil {
+			return err
+		}
+		return s.SwitchOff(cfg, switcher.Outputs{Virtual: *virtual, Physical: *physical})
+
 	case "on":
 		fs := flag.NewFlagSet("switch on", flag.ExitOnError)
 		width := fs.Int("width", envInt("SUNSHINE_CLIENT_WIDTH"), "client width")
@@ -191,6 +205,10 @@ func runSwitch(args []string) error {
 		fps := fs.Int("fps", envInt("SUNSHINE_CLIENT_FPS"), "client fps")
 		hdrFlag := fs.Bool("hdr", false, "force HDR on")
 		noHDR := fs.Bool("no-hdr", false, "force HDR off")
+		strategy := fs.String("strategy", "auto", "auto|kscreen|debugfs")
+		virtual := fs.String("virtual", "", "virtual connector name (overrides $VIRTUAL_OUTPUT)")
+		physical := fs.String("physical", "", "physical connector name (overrides $PHYSICAL_OUTPUT)")
+		noSafeRevert := fs.Bool("no-safe-revert", false, "[debugfs] meaningful for switch off only; here for parity")
 		cfgPath := fs.String("config", "", "Config file path (default ~/.config/sunbeams/config.toml)")
 		fs.StringVar(cfgPath, "c", "", "Config file path (short)")
 		help := subcommandHelps["switch-on"]
@@ -215,7 +233,13 @@ func runSwitch(args []string) error {
 		if *noHDR {
 			hdr = false
 		}
-		return switcher.SwitchOn(cfg, switcher.Outputs{}, *width, *height, *fps, hdr)
+
+		s, err := switcher.Select(*strategy, switcher.Options{SafeRevert: !*noSafeRevert})
+		if err != nil {
+			return err
+		}
+		return s.SwitchOn(cfg, switcher.Outputs{Virtual: *virtual, Physical: *physical}, *width, *height, *fps, hdr)
+
 	default:
 		return fmt.Errorf("unknown switch subcommand: %s (expected on|off)", args[0])
 	}
@@ -319,7 +343,19 @@ func runConfig(args []string) error {
 	}
 }
 
-func runInstall() error {
+func runInstall(args []string) error {
+	fs := flag.NewFlagSet("install", flag.ExitOnError)
+	withGaming := fs.Bool("with-gaming", false, "Install gaming-mode artifacts (skip prompt)")
+	noGaming := fs.Bool("no-gaming", false, "Skip gaming-mode artifacts (skip prompt)")
+	physical := fs.String("physical", "", "Physical connector for force-disable (gaming mode only)")
+	help := subcommandHelps["install"]
+	fs.Usage = func() { renderSubcommandHelp(os.Stderr, help, fs) }
+	if wantsHelp(args) {
+		renderSubcommandHelp(os.Stdout, help, fs)
+		return nil
+	}
+	_ = fs.Parse(args)
+
 	cfg, err := loadConfig("")
 	if err != nil {
 		return err
@@ -332,5 +368,25 @@ func runInstall() error {
 	if len(result.HighModes) > 0 {
 		modesScript = []byte(generate.WriteAddCustomModesScript(result))
 	}
-	return installer.Run(result.EDIDBytes, modesScript, os.Stdin, os.Stdout)
+
+	gaming := installer.GamingAsk
+	if *withGaming && *noGaming {
+		return fmt.Errorf("--with-gaming and --no-gaming are mutually exclusive")
+	}
+	if *withGaming {
+		gaming = installer.GamingYes
+	}
+	if *noGaming {
+		gaming = installer.GamingNo
+	}
+
+	return installer.Run(installer.Options{
+		EDIDBytes:         result.EDIDBytes,
+		ModesScript:       modesScript,
+		MonitorName:       cfg.EDID.MonitorName,
+		Stdin:             os.Stdin,
+		Stdout:            os.Stdout,
+		Gaming:            gaming,
+		PhysicalConnector: *physical,
+	})
 }

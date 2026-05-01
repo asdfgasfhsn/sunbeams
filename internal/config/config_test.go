@@ -25,3 +25,11 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(t, 2160, cfg.Modes[0].Height)
 	assert.Equal(t, 60, cfg.Modes[0].Refresh)
 }
+
+func TestDefaults_Gaming(t *testing.T) {
+	cfg, err := LoadDefaults()
+	require.NoError(t, err)
+	assert.Equal(t, "/usr/local/sbin/sunbeams-drm-force", cfg.Gaming.HelperPath)
+	assert.Equal(t, ".config/gamescope/modes.cfg", cfg.Gaming.ModesCfg)
+	assert.Equal(t, "", cfg.Gaming.SafeRevertMode)
+}

@@ -6,7 +6,7 @@ Go CLI that generates custom EDID binaries for headless Linux game streaming wit
 
 - Go 1.24 (stdlib + `github.com/BurntSushi/toml` + `github.com/stretchr/testify` for tests)
 - Target OS: Bazzite Desktop (rpm-ostree based Fedora Atomic)
-- Display stack: KDE Plasma / Wayland / kscreen-doctor
+- Display stack: KDE Plasma / Wayland / kscreen-doctor (Desktop Mode); gamescope + DRM debugfs (Gaming Mode)
 - Streaming: Sunshine server + Moonlight clients
 - Build/toolchain: provided by `flake.nix` (`nix develop` or direnv)
 
@@ -46,6 +46,8 @@ The EDID binary format has hard constraints:
 - CTA-861 extension blocks hold VIC codes, HDR metadata, colorimetry, and additional DTDs
 
 `Generate()` splits configured modes into DTD-capable (fit in the 655 MHz limit) vs xrandr-required; emits the DTD set into the base block (slot 1: first 4K@60, slot 2: 3440x1440@60) and remaining CTA extension blocks; writes the xrandr script for the overflow modes.
+
+The `internal/switcher` package now exposes a `Strategy` interface with two implementations: `KScreenStrategy` (KDE Plasma — today's behavior, user-space, no runtime root) and `GamescopeStrategy` (Gaming Mode — uses `~/.config/gamescope/modes.cfg` plus a sudoers-gated DRM debugfs helper). `Select(name, opts)` resolves `auto|kscreen|debugfs` with precedence: `--strategy` flag > `$SUNBEAMS_STRATEGY` env > `$GAMESCOPE_WAYLAND_DISPLAY` auto-detect. The privileged helper is an embedded shell script installed at `/usr/local/sbin/sunbeams-drm-force` with a strict NOPASSWD grant in `/etc/sudoers.d/sunbeams-drm-switch`.
 
 ## Bazzite Filesystem
 

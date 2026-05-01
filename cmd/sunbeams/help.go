@@ -84,23 +84,42 @@ var subcommandHelps = map[string]subcommandHelp{
 	},
 	"switch-on": {
 		Name:     "switch on",
-		Synopsis: "sunbeams switch on [--width N --height N --fps N] [--hdr|--no-hdr] [-c <config>]",
+		Synopsis: "sunbeams switch on [--width N --height N --fps N] [--hdr|--no-hdr] [--strategy auto|kscreen|debugfs] [--virtual <name>] [--physical <name>] [-c <config>]",
 		Summary:  "Activate the virtual display and set mode to match the Moonlight client.",
-		Description: "Uses kscreen-doctor (KDE Plasma/Wayland) to enable the virtual output and\n" +
-			"select the best mode for the requested resolution/refresh/HDR state.\n" +
+		Description: "Enables the virtual output and selects the best mode for the requested\n" +
+			"resolution/refresh/HDR state.\n" +
 			"When --width/--height/--fps are omitted, reads SUNSHINE_CLIENT_* env vars\n" +
-			"that Sunshine exports during a session.",
+			"that Sunshine exports during a session.\n" +
+			"Strategy auto-detects gamescope via $GAMESCOPE_WAYLAND_DISPLAY; override\n" +
+			"with --strategy=kscreen (KDE Plasma/Wayland) or --strategy=debugfs (Gamescope).\n" +
+			"--virtual and --physical override $VIRTUAL_OUTPUT / $PHYSICAL_OUTPUT and\n" +
+			"the built-in defaults (HDMI-A-1 / DP-1).\n" +
+			"--no-safe-revert is meaningful for 'switch off' only; accepted here for\n" +
+			"symmetry so the same Sunshine Prep Command shape works for both Do/Undo.",
 		Examples: []string{
 			"sunbeams switch on --width 3840 --height 2160 --fps 120 --hdr",
 			"sunbeams switch on   # (with SUNSHINE_CLIENT_* set by Sunshine)",
+			"sunbeams switch on --strategy=debugfs --width 1920 --height 1080 --fps 60",
+			"sunbeams switch on --virtual HDMI-A-1 --physical DP-2 --width 2560 --height 1440 --fps 60",
 		},
 	},
 	"switch-off": {
-		Name:        "switch off",
-		Synopsis:    "sunbeams switch off",
-		Summary:     "Deactivate the virtual display.",
-		Description: "Calls kscreen-doctor to disable the virtual output.",
-		Examples:    []string{"sunbeams switch off"},
+		Name:     "switch off",
+		Synopsis: "sunbeams switch off [--strategy auto|kscreen|debugfs] [--virtual <name>] [--physical <name>] [--no-safe-revert]",
+		Summary:  "Deactivate the virtual display.",
+		Description: "Disables the virtual output and re-enables the physical connector.\n" +
+			"Strategy auto-detects gamescope via $GAMESCOPE_WAYLAND_DISPLAY; override\n" +
+			"with --strategy=kscreen (KDE Plasma/Wayland) or --strategy=debugfs (Gamescope).\n" +
+			"--virtual and --physical override $VIRTUAL_OUTPUT / $PHYSICAL_OUTPUT and\n" +
+			"the built-in defaults (HDMI-A-1 / DP-1).\n" +
+			"--no-safe-revert disables the [debugfs] behavior of resetting the virtual\n" +
+			"monitor to a safe mode before re-enabling the physical connector.",
+		Examples: []string{
+			"sunbeams switch off",
+			"sunbeams switch off --strategy=debugfs",
+			"sunbeams switch off --strategy=debugfs --no-safe-revert",
+			"sunbeams switch off --virtual HDMI-A-1 --physical DP-2",
+		},
 	},
 	"config-show": {
 		Name:     "config show",
@@ -133,15 +152,27 @@ var subcommandHelps = map[string]subcommandHelp{
 	},
 	"install": {
 		Name:     "install",
-		Synopsis: "sudo sunbeams install",
+		Synopsis: "sudo sunbeams install [--with-gaming] [--no-gaming] [--physical <connector>]",
 		Summary:  "Guided Bazzite installer (requires root, reboot afterwards).",
 		Description: "Interactively:\n" +
 			"  1. scans /sys/class/drm for the virtual-display connector\n" +
 			"  2. writes the EDID and add_custom_modes.sh to /etc/firmware/\n" +
 			"  3. injects the drm.edid_firmware kernel argument via rpm-ostree\n" +
 			"  4. installs a systemd user service to apply xrandr modes on login\n" +
-			"A reboot is required for the kernel arg to take effect.",
-		Examples: []string{"sudo sunbeams install"},
+			"  5. optionally sets up gaming mode (gamescope) support:\n" +
+			"       - installs /usr/local/sbin/sunbeams-drm-force helper\n" +
+			"       - installs /etc/sudoers.d/sunbeams-drm-switch fragment\n" +
+			"       - seeds ~/.config/gamescope/modes.cfg with the monitor entry\n" +
+			"A reboot is required for the kernel arg to take effect.\n" +
+			"--with-gaming skips the gaming-mode prompt and installs gaming artifacts.\n" +
+			"--no-gaming skips the gaming-mode prompt and omits gaming artifacts.\n" +
+			"--physical sets the physical connector used by gaming mode (skips prompt).",
+		Examples: []string{
+			"sudo sunbeams install",
+			"sudo sunbeams install --with-gaming",
+			"sudo sunbeams install --with-gaming --physical DP-1",
+			"sudo sunbeams install --no-gaming",
+		},
 	},
 	"version": {
 		Name:     "version",

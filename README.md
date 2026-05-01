@@ -135,6 +135,43 @@ Run `sunbeams <command> --help` for per-command flags.
 - [Validating the EDID](docs/validating.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
+## Gaming Mode (gamescope) — Bazzite Steam Deck Mode
+
+Sunbeams also supports Bazzite Gaming Mode, where gamescope acts as the Wayland compositor and `kscreen-doctor` doesn't work. Switching uses a different mechanism: the helper writes to DRM debugfs to force-disable the physical connector, and gamescope's `~/.config/gamescope/modes.cfg` is updated to set the virtual monitor's preferred mode.
+
+### Install
+
+```bash
+sudo sunbeams install --with-gaming --physical=HDMI-A-1
+```
+
+This adds three artifacts on top of the standard install:
+
+- `/usr/local/sbin/sunbeams-drm-force` — a 40-line shell helper (mode 0700)
+- `/etc/sudoers.d/sunbeams-drm-switch` — NOPASSWD grant scoped to that one binary
+- `~/.config/gamescope/modes.cfg` — seeded with your virtual monitor name, default `1920x1080@60`
+
+### Sunshine commands
+
+In Sunshine's General → Command Preparations:
+
+| | Command |
+|---|---|
+| Do | `sunbeams switch on --physical HDMI-A-1 --width $SUNSHINE_CLIENT_WIDTH --height $SUNSHINE_CLIENT_HEIGHT --fps $SUNSHINE_CLIENT_FPS` |
+| Undo | `sunbeams switch off --physical HDMI-A-1` |
+
+`--strategy` defaults to `auto` and detects gamescope via `$GAMESCOPE_WAYLAND_DISPLAY`. From desktop mode you can force `--strategy=debugfs` for testing. Use `--strategy=kscreen` to pin the desktop strategy if auto-detection misfires.
+
+### Power-user knobs
+
+| Flag / env | Purpose |
+|---|---|
+| `--strategy=auto\|kscreen\|debugfs` | Override switching strategy |
+| `$SUNBEAMS_STRATEGY` | Persistent strategy override (use `kscreen` or `debugfs`, not `auto`) |
+| `--no-safe-revert` | Skip the resolution-safety reset on `switch off` (default: revert to a low-risk mode to avoid Plasma's black-screen-on-return bug) |
+
+See [docs/troubleshooting.md](docs/troubleshooting.md#gaming-mode) for known limitations.
+
 ## Credits
 
 - Original virtual display EDID injection technique: [iamthenuggetman's gist](https://gist.github.com/iamthenuggetman/6d0884954653940596d463a48b2f459c)

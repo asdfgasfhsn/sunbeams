@@ -53,12 +53,19 @@ type Mode struct {
 	Description string `toml:"description"`
 }
 
+type GamingConfig struct {
+	HelperPath     string `toml:"helper_path"`
+	ModesCfg       string `toml:"modes_cfg"`
+	SafeRevertMode string `toml:"safe_revert_mode"`
+}
+
 type Config struct {
 	EDID            EDIDConfig       `toml:"edid"`
 	CTA             CTAConfig        `toml:"cta"`
 	StandardTimings []StandardTiming `toml:"standard_timings"`
 	Devices         []Device         `toml:"devices"`
 	Modes           []Mode           `toml:"modes"`
+	Gaming          GamingConfig     `toml:"gaming"`
 }
 
 // LoadDefaults parses the embedded default config.

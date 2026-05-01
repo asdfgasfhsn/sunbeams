@@ -40,3 +40,35 @@ journalctl --user -u sunshine -f
 **Bazzite Deck / Game Mode / gamescope:** Not supported. `kscreen-doctor` is not available inside gamescope, so `sunbeams switch` cannot run. Boot into Desktop Mode (KDE Plasma / Wayland) before streaming. The Bazzite Deck images themselves are not a tested target regardless of which mode you boot into — see [Supported platforms](../README.md#supported-platforms). For community gamescope experiments, see the [gamescope workaround](https://gist.github.com/iamthenuggetman/6d0884954653940596d463a48b2f459c#gistcomment-5882590), but no support is provided.
 
 **GNOME-based images (bazzite-gnome, Aurora, Bluefin, Silverblue):** Not supported. The display switcher is KDE/`kscreen-doctor` specific; there is no GNOME/Mutter equivalent in sunbeams today.
+
+## Gaming Mode
+
+### Sleep/wake leaves the physical disconnected
+
+If the system sleeps mid-stream, Sunshine cannot run its Undo command and the physical connector stays force-off. Manually re-enable from another machine via SSH:
+
+```bash
+ssh user@bazzite-host -- sudo /usr/local/sbin/sunbeams-drm-force on HDMI-A-1
+```
+
+This is a kernel-level limitation, not a sunbeams bug.
+
+### `sudo: a password is required`
+
+The sudoers fragment was not installed or was overwritten. Re-run:
+
+```bash
+sudo sunbeams install --with-gaming --physical=HDMI-A-1
+```
+
+### `multiple debugfs paths for HDMI-A-1`
+
+Multi-GPU systems are not supported in v1. The helper refuses to guess which GPU's connector to toggle.
+
+### Black screen returning to desktop after streaming
+
+The gaming-mode `switch off` resets the virtual monitor to a safe mode (default 1920x1080@60) before re-enabling the physical, specifically to avoid this. If you've added `--no-safe-revert`, this is the cost.
+
+### NVIDIA proprietary driver
+
+The DRM debugfs `force` interface is verified on AMD; behavior on NVIDIA's proprietary stack is unverified. The helper fails cleanly with exit code 3 ("no debugfs path") if your driver doesn't expose the file.

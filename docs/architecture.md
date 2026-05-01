@@ -28,3 +28,23 @@ The `firmware_class.path=/etc/firmware` kernel parameter tells the kernel firmwa
 - Some users have reported that `/usr/local/lib/firmware` isn't reliably included in the initramfs, causing the EDID to be invisible during early boot
 
 If you're on a traditional (non-atomic) distro like Arch or standard Fedora Workstation, you can place the file in `/usr/lib/firmware/edid/` and use `drm.edid_firmware=HDMI-A-1:edid/edid.bin` without the `firmware_class.path` parameter.
+
+## Display Switching Strategies
+
+Sunbeams supports two display-switching backends, selected at runtime by `internal/switcher/strategy.go`:
+
+**`KScreenStrategy`** — the default for KDE Plasma desktop mode. Calls `kscreen-doctor` to disable the physical connector, enable the virtual one, and apply the requested mode atomically. Falls back to a 3-step sequence with a 2-second delay if the atomic call fails. No root required at runtime.
+
+**`GamescopeStrategy`** — for Bazzite Gaming Mode where gamescope is the compositor and `kscreen-doctor` doesn't run. Two operations:
+
+1. **Mode selection via `~/.config/gamescope/modes.cfg`.** Each line is `<MonitorName>:<W>x<H>@<R>`. The strategy reads `cfg.EDID.MonitorName` (the name baked into our EDID), finds or appends the matching line, and atomically rewrites the file. Gamescope picks up the new mode on the next connector hotplug.
+
+2. **Physical connector disable via DRM debugfs.** A 40-line shell helper installed at `/usr/local/sbin/sunbeams-drm-force` writes `off` (or `on`) to `/sys/kernel/debug/dri/<pci>/<connector>/force` and triggers `udevadm`. The kernel treats this as a fake hotplug. The helper is invoked via `sudo -n` with a NOPASSWD entry scoped to that single binary.
+
+Strategy selection (`Select(name, opts)`):
+
+- `auto` (default): chooses `debugfs` if `$GAMESCOPE_WAYLAND_DISPLAY` is set, else `kscreen`
+- explicit `kscreen` or `debugfs` overrides auto
+- `$SUNBEAMS_STRATEGY` env (set to `kscreen` or `debugfs`) is consulted between flag and auto-detect
+
+`SwitchOff` for the gamescope strategy does an optional safe-revert: rewrites the modes.cfg line to a low-risk mode (default `1920x1080@60`, configurable via `[gaming].safe_revert_mode`) before re-enabling the physical. This avoids a documented Plasma black-screen-on-return bug if you switch back to desktop while the virtual is at an exotic resolution.
