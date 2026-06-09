@@ -40,6 +40,19 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 		return err
 	}
 	kargs := ParseSunbeamsKargs(cmdline, connector)
+	// A merged drm.edid_firmware token references multiple connectors in one
+	// karg and cannot be removed for a single connector via --delete-if-present
+	// (deleting it would also drop the others). Refuse and point the user at a
+	// full uninstall. This cannot arise from sunbeams' own install (which emits
+	// one token per connector) but can if kargs were hand-edited.
+	if connector != "" {
+		for _, k := range kargs {
+			if strings.HasPrefix(k, "drm.edid_firmware=") && strings.Contains(k, ",") {
+				return fmt.Errorf("connector %s shares a merged kernel argument %q with other connectors "+
+					"and cannot be removed alone — run a full 'sunbeams uninstall' (without --connector)", connector, k)
+			}
+		}
+	}
 	if len(kargs) > 0 {
 		fmt.Fprintln(stdout, "Found sunbeams kernel arguments:") //nolint:errcheck // progress to stdout; unactionable
 		for _, k := range kargs {
