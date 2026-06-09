@@ -77,10 +77,6 @@ func main() {
 			os.Exit(1)
 		}
 	case "uninstall":
-		if wantsHelp(os.Args[2:]) {
-			renderSubcommandHelp(os.Stdout, subcommandHelps["uninstall"], nil)
-			return
-		}
 		if err := runUninstall(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
