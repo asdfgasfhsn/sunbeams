@@ -76,6 +76,15 @@ func main() {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
+	case "uninstall":
+		if wantsHelp(os.Args[2:]) {
+			renderSubcommandHelp(os.Stdout, subcommandHelps["uninstall"], nil)
+			return
+		}
+		if err := runUninstall(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
 	case "version":
 		if wantsHelp(os.Args[2:]) {
 			renderSubcommandHelp(os.Stdout, subcommandHelps["version"], nil)
@@ -333,4 +342,19 @@ func runInstall() error {
 		modesScript = []byte(generate.WriteAddCustomModesScript(result))
 	}
 	return installer.Run(result.EDIDBytes, modesScript, os.Stdin, os.Stdout)
+}
+
+func runUninstall(args []string) error {
+	fs := flag.NewFlagSet("uninstall", flag.ExitOnError)
+	connector := fs.String("connector", "", "Only remove kargs for this connector (default: all)")
+	yes := fs.Bool("yes", false, "Remove everything detected without prompting")
+	fs.BoolVar(yes, "y", false, "Remove everything detected without prompting (short)")
+	help := subcommandHelps["uninstall"]
+	fs.Usage = func() { renderSubcommandHelp(os.Stderr, help, fs) }
+	if wantsHelp(args) {
+		renderSubcommandHelp(os.Stdout, help, fs)
+		return nil
+	}
+	_ = fs.Parse(args)
+	return installer.Uninstall(*connector, *yes, os.Stdin, os.Stdout)
 }

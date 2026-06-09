@@ -16,6 +16,7 @@ COMMANDS:
   generate    Build the virtual-display EDID binary and helper scripts
   switch      Turn the virtual display on/off (for Sunshine Prep Commands)
   install     Guided installer: firmware file, kernel arg, systemd user service
+  uninstall   Remove the EDID injection: kargs, firmware file, user service
   devices     List built-in device presets (TVs, monitors, tablets, handhelds)
   modes       List configured modes with pixel clock + DTD/xrandr classification
   config      Manage user config at ~/.config/sunbeams/config.toml
@@ -142,6 +143,24 @@ var subcommandHelps = map[string]subcommandHelp{
 			"  4. installs a systemd user service to apply xrandr modes on login\n" +
 			"A reboot is required for the kernel arg to take effect.",
 		Examples: []string{"sudo sunbeams install"},
+	},
+	"uninstall": {
+		Name:     "uninstall",
+		Synopsis: "sudo sunbeams uninstall [--connector <name>] [-y]",
+		Summary:  "Remove a sunbeams EDID injection (requires root, reboot afterwards).",
+		Description: "Interactively detects and removes what 'install' added:\n" +
+			"  1. sunbeams kernel args (drm.edid_firmware, video, firmware_class.path)\n" +
+			"  2. the EDID firmware file at /etc/firmware/edid.bin\n" +
+			"  3. the systemd user service and xrandr mode script\n" +
+			"Use --connector to remove kargs for a single output only (leaves the\n" +
+			"shared firmware file and user service in place). Use -y to remove\n" +
+			"everything detected without prompting. A reboot is required for kernel\n" +
+			"arg changes to take effect.",
+		Examples: []string{
+			"sudo sunbeams uninstall",
+			"sudo sunbeams uninstall --connector DP-2",
+			"sudo sunbeams uninstall -y",
+		},
 	},
 	"version": {
 		Name:     "version",
