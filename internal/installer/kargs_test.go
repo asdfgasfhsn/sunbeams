@@ -76,6 +76,15 @@ func TestParseSunbeamsKargs(t *testing.T) {
 			},
 		},
 		{
+			name:      "connector narrowing with merged token returns whole token",
+			cmdline:   merged,
+			connector: "DP-2",
+			want: []string{
+				"drm.edid_firmware=DP-2:edid.bin,HDMI-A-1:edid.bin",
+				"video=DP-2:e",
+			},
+		},
+		{
 			name:    "empty cmdline returns nil",
 			cmdline: "ro quiet splash",
 			want:    nil,

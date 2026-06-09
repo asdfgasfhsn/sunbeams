@@ -45,6 +45,10 @@ func ParseSunbeamsKargs(cmdline, connector string) []string {
 	for _, tok := range tokens {
 		switch {
 		case strings.HasPrefix(tok, edidPrefix):
+			// When connector is non-empty and the token is the merged form
+			// (multiple connectors in one token), the whole token is returned —
+			// callers cannot surgically delete one connector from a merged token,
+			// so a full wipe (connector == "") is required in that situation.
 			for _, pair := range strings.Split(strings.TrimPrefix(tok, edidPrefix), ",") {
 				conn, file, ok := strings.Cut(pair, ":")
 				if ok && file == EDIDName && (connector == "" || conn == connector) {
