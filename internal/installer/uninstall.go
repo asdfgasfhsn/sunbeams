@@ -31,6 +31,7 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 		return line == "y" || line == "yes"
 	}
 
+	rebootRequired := false
 	removedAny := false
 
 	// 1. Kernel args
@@ -49,6 +50,7 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 				return err
 			}
 			fmt.Fprintln(stdout, "✓ Kernel arguments removed") //nolint:errcheck // progress to stdout; unactionable
+			rebootRequired = true
 			removedAny = true
 		}
 	} else {
@@ -58,19 +60,23 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 	// The firmware file and user service are shared/global — only handle them
 	// on a full wipe, not when narrowing to a single connector.
 	if connector == "" {
-		// 2. EDID firmware file
+		// 2. EDID firmware file. Removal failure is non-fatal: warn and continue
+		// so the final summary (and any reboot notice) still prints.
 		edidPath := filepath.Join(FirmwareDir, EDIDName)
 		if _, statErr := os.Stat(edidPath); statErr == nil {
 			if confirm(fmt.Sprintf("Remove EDID firmware file %s? [y/N]: ", edidPath)) {
 				if err := os.Remove(edidPath); err != nil {
-					return err
+					fmt.Fprintf(stdout, "⚠ Could not remove %s: %v\n", edidPath, err) //nolint:errcheck // warning to stdout; unactionable
+				} else {
+					fmt.Fprintf(stdout, "✓ Removed %s\n", edidPath) //nolint:errcheck // progress to stdout; unactionable
+					removedAny = true
 				}
-				fmt.Fprintf(stdout, "✓ Removed %s\n", edidPath) //nolint:errcheck // progress to stdout; unactionable
-				removedAny = true
 			}
 		}
 
-		// 3. systemd user service + xrandr script
+		// 3. systemd user service + xrandr script. Unlike installer.go (which
+		// must write and so treats a missing SUDO_USER as fatal), uninstall has
+		// nothing to do here without it, so we silently skip.
 		if realUser := os.Getenv("SUDO_USER"); realUser != "" {
 			if u, lookErr := user.Lookup(realUser); lookErr == nil {
 				unitPath := filepath.Join(u.HomeDir, ".config", "systemd", "user", "virtual-display-modes.service")
@@ -79,30 +85,38 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 				_, scriptErr := os.Stat(scriptPath)
 				if unitErr == nil || scriptErr == nil {
 					if confirm("Remove systemd user service and xrandr mode script? [y/N]: ") {
+						var removed []string
 						if unitErr == nil {
 							if err := os.Remove(unitPath); err != nil {
-								return err
+								fmt.Fprintf(stdout, "⚠ Could not remove %s: %v\n", unitPath, err) //nolint:errcheck // warning to stdout; unactionable
+							} else {
+								removed = append(removed, "user service")
 							}
 						}
 						if scriptErr == nil {
 							if err := os.Remove(scriptPath); err != nil {
-								return err
+								fmt.Fprintf(stdout, "⚠ Could not remove %s: %v\n", scriptPath, err) //nolint:errcheck // warning to stdout; unactionable
+							} else {
+								removed = append(removed, "xrandr script")
 							}
 						}
-						fmt.Fprintln(stdout, "✓ Removed user service and script")                           //nolint:errcheck // progress to stdout; unactionable
-						fmt.Fprintln(stdout, "  Run: systemctl --user daemon-reload (as the desktop user)") //nolint:errcheck // progress to stdout; unactionable
-						removedAny = true
+						if len(removed) > 0 {
+							fmt.Fprintf(stdout, "✓ Removed %s\n", strings.Join(removed, " and "))               //nolint:errcheck // progress to stdout; unactionable
+							fmt.Fprintln(stdout, "  Run: systemctl --user daemon-reload (as the desktop user)") //nolint:errcheck // progress to stdout; unactionable
+							removedAny = true
+						}
 					}
 				}
 			}
-		} else {
-			fmt.Fprintln(stdout, "Note: SUDO_USER not set — skipping user service check.") //nolint:errcheck // progress to stdout; unactionable
 		}
 	}
 
-	if removedAny {
+	switch {
+	case rebootRequired:
 		fmt.Fprintln(stdout, "\nReboot required for kernel argument changes to take effect.") //nolint:errcheck // progress to stdout; unactionable
-	} else {
+	case removedAny:
+		fmt.Fprintln(stdout, "✓ Done.") //nolint:errcheck // progress to stdout; unactionable
+	default:
 		fmt.Fprintln(stdout, "Nothing removed.") //nolint:errcheck // progress to stdout; unactionable
 	}
 	return nil
