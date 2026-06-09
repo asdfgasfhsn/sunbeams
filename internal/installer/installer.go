@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -21,6 +22,27 @@ const (
 func Run(edidBytes []byte, modesScript []byte, stdin io.Reader, stdout io.Writer) error {
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("installer must run as root (sudo)")
+	}
+
+	r := bufio.NewReader(stdin)
+
+	// 0. Detect and offer to clean stale sunbeams kargs (idempotent re-install).
+	if cmdline, err := CurrentKargs(); err == nil {
+		if stale := ParseSunbeamsKargs(cmdline, ""); len(stale) > 0 {
+			fmt.Fprintln(stdout, "Existing sunbeams kernel arguments detected:") //nolint:errcheck // progress to stdout; unactionable
+			for _, k := range stale {
+				fmt.Fprintf(stdout, "  %s\n", k) //nolint:errcheck // progress to stdout; unactionable
+			}
+			fmt.Fprint(stdout, "Remove them before injecting the new connector? [Y/n]: ") //nolint:errcheck // prompt to stdout; unactionable
+			line, _ := r.ReadString('\n')
+			line = strings.ToLower(strings.TrimSpace(line))
+			if line == "" || line == "y" || line == "yes" {
+				if err := DeleteKargs(stale); err != nil {
+					return err
+				}
+				fmt.Fprintln(stdout, "✓ Removed stale kernel arguments") //nolint:errcheck // progress to stdout; unactionable
+			}
+		}
 	}
 
 	// 1. Install EDID
@@ -53,13 +75,23 @@ func Run(edidBytes []byte, modesScript []byte, stdin io.Reader, stdout io.Writer
 
 	// 3. Prompt for selection
 	fmt.Fprint(stdout, "\nSelect output for virtual display [1-", len(cons), "]: ") //nolint:errcheck // progress message to stdout; unactionable
-	r := bufio.NewReader(stdin)
 	line, _ := r.ReadString('\n')
 	var idx int
 	if _, err := fmt.Sscanf(line, "%d", &idx); err != nil || idx < 1 || idx > len(cons) {
 		return fmt.Errorf("invalid selection")
 	}
-	output := cons[idx-1].Name
+	selected := cons[idx-1]
+	output := selected.Name
+	if selected.Status == "connected" {
+		fmt.Fprintf(stdout, "\n⚠ %s currently has a display connected. Injecting a forced EDID\n", output) //nolint:errcheck // warning to stdout; unactionable
+		fmt.Fprintln(stdout, "  will override that monitor's real EDID.")                                  //nolint:errcheck // warning to stdout; unactionable
+		fmt.Fprint(stdout, "Continue anyway? [y/N]: ")                                                     //nolint:errcheck // prompt to stdout; unactionable
+		confirmLine, _ := r.ReadString('\n')
+		confirmLine = strings.ToLower(strings.TrimSpace(confirmLine))
+		if confirmLine != "y" && confirmLine != "yes" {
+			return fmt.Errorf("aborted: connector %s is connected", output)
+		}
+	}
 
 	// 4. Inject kargs
 	kargs := BuildKargs(FirmwareDir, output, EDIDName)
