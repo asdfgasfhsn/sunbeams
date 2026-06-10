@@ -405,7 +405,7 @@ func runStatus(args []string) error {
 	}
 	fmt.Printf("\n%d connector(s) carry the sunbeams EDID.\n", len(rep.Connectors))
 	if !rep.RebootDetectable {
-		fmt.Println("(rpm-ostree unavailable — 'reboot pending' state could not be determined.)")
+		fmt.Println("(rpm-ostree unavailable — 'reboot pending' / 'removal staged' states could not be determined.)")
 	}
 	return nil
 }

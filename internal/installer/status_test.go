@@ -194,6 +194,40 @@ func TestStatus_NoSysfs(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNoSysfs)
 }
 
+func TestBuildReport_EmptyFirmwareNoFalseMatch(t *testing.T) {
+	// A 0-byte firmware must not match a disconnected connector's nil/empty EDID.
+	conns := map[string]sysfsConn{
+		"DP-2": {Status: "disconnected", EDID: nil},   // configured
+		"DP-1": {Status: "connected", EDID: []byte{}}, // unconfigured — must NOT become an orphan
+	}
+	rep := buildReport([]string{"DP-2"}, []string{"DP-2"}, []byte{}, true, conns)
+	require.Len(t, rep.Connectors, 1) // only DP-2; DP-1 not pulled in as orphan
+	assert.Equal(t, "DP-2", rep.Connectors[0].Name)
+	assert.False(t, rep.Connectors[0].EDIDLoaded)
+}
+
+func TestStatus_EmptyFirmwareIsIncomplete(t *testing.T) {
+	if _, err := exec.LookPath("rpm-ostree"); err == nil {
+		t.Skip("rpm-ostree present — fallback path not exercised")
+	}
+	root := t.TempDir()
+	writeConnector(t, root, "card0-DP-2", "disconnected\n", nil) // no edid file
+
+	cmdline := filepath.Join(t.TempDir(), "cmdline")
+	require.NoError(t, os.WriteFile(cmdline,
+		[]byte("ro drm.edid_firmware=DP-2:edid.bin video=DP-2:e\n"), 0o644))
+
+	fwPath := filepath.Join(t.TempDir(), "edid.bin")
+	require.NoError(t, os.WriteFile(fwPath, []byte{}, 0o644)) // 0-byte firmware
+
+	rep, err := Status(root, cmdline, fwPath)
+	require.NoError(t, err)
+	assert.False(t, rep.FirmwarePresent)
+	require.Len(t, rep.Connectors, 1)
+	assert.False(t, rep.Connectors[0].EDIDLoaded)
+	assert.Equal(t, "⚠ no /etc/firmware/edid.bin — install incomplete", rep.Connectors[0].Verdict)
+}
+
 func TestStatus_MergedKargToken(t *testing.T) {
 	if _, err := exec.LookPath("rpm-ostree"); err == nil {
 		t.Skip("rpm-ostree present — fallback path not exercised")

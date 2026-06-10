@@ -74,7 +74,7 @@ func buildReport(configured, boot []string, firmwareBytes []byte, firmwarePresen
 	for n := range bootSet {
 		names[n] = true
 	}
-	if firmwarePresent {
+	if firmwarePresent && len(firmwareBytes) > 0 {
 		for n, c := range conns {
 			if bytes.Equal(c.EDID, firmwareBytes) {
 				names[n] = true
@@ -90,7 +90,7 @@ func buildReport(configured, boot []string, firmwareBytes []byte, firmwarePresen
 			Connected:  ok && c.Status == "connected",
 			Configured: cfgSet[n],
 			BootActive: bootSet[n],
-			EDIDLoaded: ok && firmwarePresent && bytes.Equal(c.EDID, firmwareBytes),
+			EDIDLoaded: ok && firmwarePresent && len(firmwareBytes) > 0 && bytes.Equal(c.EDID, firmwareBytes),
 		}
 		cs.Verdict = classify(cs, firmwarePresent)
 		list = append(list, cs)
@@ -168,7 +168,7 @@ func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
 	boot := connectorsFromKargs(ParseSunbeamsKargs(string(cmdlineRaw), ""))
 
 	firmwareBytes, fwErr := os.ReadFile(firmwarePath)
-	firmwarePresent := fwErr == nil
+	firmwarePresent := fwErr == nil && len(firmwareBytes) > 0
 
 	rep := buildReport(configured, boot, firmwareBytes, firmwarePresent, conns)
 	rep.RebootDetectable = rebootDetectable
