@@ -39,6 +39,8 @@ COMMON INVOCATIONS:
   sunbeams config show                         # dump the merged config as TOML
   sunbeams switch on --width 3840 --height 2160 --fps 120 --hdr
   sunbeams switch off
+  sudo sunbeams uninstall                      # interactively remove the EDID injection
+  sudo sunbeams uninstall --connector DP-2     # remove kargs for one connector only
 
 CONFIGURATION:
   Defaults are embedded in the binary. Run 'sunbeams config init' to write a
