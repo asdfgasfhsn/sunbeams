@@ -193,3 +193,29 @@ func TestStatus_NoSysfs(t *testing.T) {
 	_, err := Status(filepath.Join(t.TempDir(), "missing"), "/proc/cmdline", "/etc/firmware/edid.bin")
 	assert.ErrorIs(t, err, ErrNoSysfs)
 }
+
+func TestStatus_MergedKargToken(t *testing.T) {
+	if _, err := exec.LookPath("rpm-ostree"); err == nil {
+		t.Skip("rpm-ostree present — fallback path not exercised")
+	}
+	root := t.TempDir()
+	fw := []byte("MERGED-EDID")
+	writeConnector(t, root, "card0-DP-2", "disconnected\n", fw)
+	writeConnector(t, root, "card0-HDMI-A-1", "disconnected\n", fw)
+
+	cmdline := filepath.Join(t.TempDir(), "cmdline")
+	require.NoError(t, os.WriteFile(cmdline,
+		[]byte("ro drm.edid_firmware=DP-2:edid.bin,HDMI-A-1:edid.bin video=DP-2:e video=HDMI-A-1:e\n"), 0o644))
+
+	fwPath := filepath.Join(t.TempDir(), "edid.bin")
+	require.NoError(t, os.WriteFile(fwPath, fw, 0o644))
+
+	rep, err := Status(root, cmdline, fwPath)
+	require.NoError(t, err)
+	require.Len(t, rep.Connectors, 2)
+	// Sorted by name: DP-2, then HDMI-A-1. Both configured+boot+loaded => active.
+	assert.Equal(t, "DP-2", rep.Connectors[0].Name)
+	assert.Equal(t, "✓ active", rep.Connectors[0].Verdict)
+	assert.Equal(t, "HDMI-A-1", rep.Connectors[1].Name)
+	assert.Equal(t, "✓ active", rep.Connectors[1].Verdict)
+}

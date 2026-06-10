@@ -154,8 +154,8 @@ func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
 	}
 
 	// Configured source: prefer rpm-ostree kargs (persistent intent). If
-	// unavailable, fall back to /proc/cmdline and flag reboot-pending as
-	// undetectable.
+	// unavailable, fall back to /proc/cmdline and flag reboot-pending (and
+	// removal-staged) detection as undetectable — both sets become identical.
 	cmdlineRaw, _ := os.ReadFile(cmdlinePath)
 	rebootDetectable := true
 	configuredRaw, err := CurrentKargs()
