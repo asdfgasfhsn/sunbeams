@@ -84,8 +84,10 @@ type Report struct {
 
 ### I/O layer (thin)
 
-- **`Status(sysfsRoot, cmdlinePath string) (Report, error)`** — orchestrator.
-  Params injectable; CLI passes `"/sys/class/drm"`, `"/proc/cmdline"`.
+- **`Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error)`** —
+  orchestrator. All three paths are injectable (firmwarePath too, so the byte
+  comparison is testable without touching the real `/etc/firmware`); the CLI
+  passes `"/sys/class/drm"`, `"/proc/cmdline"`, and the installed firmware path.
   1. `configured := connectorsFromKargs(ParseSunbeamsKargs(<rpm-ostree or fallback>, ""))`
   2. `boot := connectorsFromKargs(ParseSunbeamsKargs(<read cmdlinePath>, ""))`
   3. `firmware, _ := os.ReadFile(/etc/firmware/edid.bin)` → presence + size
