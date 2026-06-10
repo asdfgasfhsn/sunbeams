@@ -1,9 +1,13 @@
 package installer
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClassify(t *testing.T) {
@@ -123,4 +127,69 @@ func TestBuildReport_NoFirmwareMarksIncomplete(t *testing.T) {
 	assert.Len(t, rep.Connectors, 1)
 	assert.False(t, rep.Connectors[0].EDIDLoaded)
 	assert.Equal(t, "⚠ no /etc/firmware/edid.bin — install incomplete", rep.Connectors[0].Verdict)
+}
+
+func writeConnector(t *testing.T, root, dir, status string, edid []byte) {
+	t.Helper()
+	d := filepath.Join(root, dir)
+	require.NoError(t, os.MkdirAll(d, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(d, "status"), []byte(status), 0o644))
+	if edid != nil {
+		require.NoError(t, os.WriteFile(filepath.Join(d, "edid"), edid, 0o644))
+	}
+}
+
+func TestScanConnectorEDID(t *testing.T) {
+	root := t.TempDir()
+	writeConnector(t, root, "card0-DP-2", "disconnected\n", []byte("OURS"))
+	writeConnector(t, root, "card0-eDP-1", "connected\n", []byte("laptop")) // not HDMI/DP — ignored
+
+	got, err := scanConnectorEDID(root)
+	require.NoError(t, err)
+	require.Contains(t, got, "DP-2")
+	assert.Equal(t, "disconnected", got["DP-2"].Status)
+	assert.Equal(t, []byte("OURS"), got["DP-2"].EDID)
+	assert.NotContains(t, got, "eDP-1")
+}
+
+func TestScanConnectorEDID_NoSysfs(t *testing.T) {
+	_, err := scanConnectorEDID(filepath.Join(t.TempDir(), "does-not-exist"))
+	assert.ErrorIs(t, err, ErrNoSysfs)
+}
+
+// TestStatus_FallbackNoRpmOstree exercises the full orchestrator against temp
+// paths. In the test environment rpm-ostree is absent, so CurrentKargs fails and
+// Status falls back to /proc/cmdline as the configured source (RebootDetectable
+// false). The firmware file and sysfs edid match, so the connector is "active".
+func TestStatus_FallbackNoRpmOstree(t *testing.T) {
+	if _, err := exec.LookPath("rpm-ostree"); err == nil {
+		t.Skip("rpm-ostree present — fallback path not exercised")
+	}
+	root := t.TempDir()
+	fw := []byte("EDID-PAYLOAD")
+	writeConnector(t, root, "card0-DP-2", "disconnected\n", fw)
+
+	cmdline := filepath.Join(t.TempDir(), "cmdline")
+	require.NoError(t, os.WriteFile(cmdline,
+		[]byte("ro drm.edid_firmware=DP-2:edid.bin video=DP-2:e firmware_class.path=/etc/firmware\n"), 0o644))
+
+	fwPath := filepath.Join(t.TempDir(), "edid.bin")
+	require.NoError(t, os.WriteFile(fwPath, fw, 0o644))
+
+	rep, err := Status(root, cmdline, fwPath)
+	require.NoError(t, err)
+	assert.False(t, rep.RebootDetectable)
+	assert.True(t, rep.FirmwarePresent)
+	require.Len(t, rep.Connectors, 1)
+	c := rep.Connectors[0]
+	assert.Equal(t, "DP-2", c.Name)
+	assert.True(t, c.Configured)
+	assert.True(t, c.BootActive)
+	assert.True(t, c.EDIDLoaded)
+	assert.Equal(t, "✓ active", c.Verdict)
+}
+
+func TestStatus_NoSysfs(t *testing.T) {
+	_, err := Status(filepath.Join(t.TempDir(), "missing"), "/proc/cmdline", "/etc/firmware/edid.bin")
+	assert.ErrorIs(t, err, ErrNoSysfs)
 }

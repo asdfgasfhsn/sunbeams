@@ -3,6 +3,8 @@ package installer
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -108,6 +110,69 @@ func toSet(xs []string) map[string]bool {
 		m[x] = true
 	}
 	return m
+}
+
+// scanConnectorEDID walks a DRM sysfs root and returns each HDMI/DP connector's
+// status and live EDID bytes, keyed by connector name (e.g. "DP-2"). Returns
+// ErrNoSysfs if the root does not exist.
+func scanConnectorEDID(root string) (map[string]sysfsConn, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrNoSysfs
+		}
+		return nil, err
+	}
+	out := map[string]sysfsConn{}
+	for _, e := range entries {
+		name := e.Name() // e.g. "card0-DP-2"
+		dash := strings.Index(name, "-")
+		if dash < 0 {
+			continue
+		}
+		connector := name[dash+1:]
+		if !strings.HasPrefix(connector, "HDMI") && !strings.HasPrefix(connector, "DP") {
+			continue
+		}
+		st, err := os.ReadFile(filepath.Join(root, name, "status"))
+		if err != nil {
+			continue
+		}
+		edid, _ := os.ReadFile(filepath.Join(root, name, "edid")) // may be absent/empty
+		out[connector] = sysfsConn{Status: strings.TrimSpace(string(st)), EDID: edid}
+	}
+	return out, nil
+}
+
+// Status reports the sunbeams EDID-injection state for every connector. All
+// three paths are injectable for testing; the CLI passes "/sys/class/drm",
+// "/proc/cmdline", and the installed firmware path. Requires no root.
+func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
+	conns, err := scanConnectorEDID(sysfsRoot)
+	if err != nil {
+		return Report{}, err
+	}
+
+	// Configured source: prefer rpm-ostree kargs (persistent intent). If
+	// unavailable, fall back to /proc/cmdline and flag reboot-pending as
+	// undetectable.
+	cmdlineRaw, _ := os.ReadFile(cmdlinePath)
+	rebootDetectable := true
+	configuredRaw, err := CurrentKargs()
+	if err != nil {
+		configuredRaw = string(cmdlineRaw)
+		rebootDetectable = false
+	}
+
+	configured := connectorsFromKargs(ParseSunbeamsKargs(configuredRaw, ""))
+	boot := connectorsFromKargs(ParseSunbeamsKargs(string(cmdlineRaw), ""))
+
+	firmwareBytes, fwErr := os.ReadFile(firmwarePath)
+	firmwarePresent := fwErr == nil
+
+	rep := buildReport(configured, boot, firmwareBytes, firmwarePresent, conns)
+	rep.RebootDetectable = rebootDetectable
+	return rep, nil
 }
 
 // connectorsFromKargs extracts connector names from drm.edid_firmware tokens
