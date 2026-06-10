@@ -17,6 +17,7 @@ COMMANDS:
   switch      Turn the virtual display on/off (for Sunshine Prep Commands)
   install     Guided installer: firmware file, kernel arg, systemd user service
   uninstall   Remove the EDID injection: kargs, firmware file, user service
+  status      Show which connectors have the virtual EDID configured/active
   devices     List built-in device presets (TVs, monitors, tablets, handhelds)
   modes       List configured modes with pixel clock + DTD/xrandr classification
   config      Manage user config at ~/.config/sunbeams/config.toml
@@ -41,6 +42,7 @@ COMMON INVOCATIONS:
   sunbeams switch off
   sudo sunbeams uninstall                      # interactively remove the EDID injection
   sudo sunbeams uninstall --connector DP-2     # remove kargs for one connector only
+  sunbeams status                              # show which connectors carry the EDID
 
 CONFIGURATION:
   Defaults are embedded in the binary. Run 'sunbeams config init' to write a
@@ -163,6 +165,16 @@ var subcommandHelps = map[string]subcommandHelp{
 			"sudo sunbeams uninstall --connector DP-2",
 			"sudo sunbeams uninstall -y",
 		},
+	},
+	"status": {
+		Name:     "status",
+		Synopsis: "sunbeams status",
+		Summary:  "Show which connectors have the virtual EDID configured and active.",
+		Description: "Read-only (no root). For each connector reports whether the sunbeams\n" +
+			"EDID is configured (in the kernel args), active this boot (in /proc/cmdline),\n" +
+			"and actually loaded (its live /sys/class/drm EDID matches /etc/firmware/edid.bin).\n" +
+			"Distinguishes 'active' from 'configured — reboot pending'.",
+		Examples: []string{"sunbeams status"},
 	},
 	"version": {
 		Name:     "version",

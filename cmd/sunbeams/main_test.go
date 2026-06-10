@@ -36,7 +36,7 @@ func TestHelp_TopLevel(t *testing.T) {
 		out, err := run.CombinedOutput()
 		require.NoError(t, err, "exit non-zero for %q: %s", arg, out)
 		s := string(out)
-		for _, keyword := range []string{"USAGE:", "COMMANDS:", "generate", "switch", "install", "uninstall", "TYPICAL WORKFLOW", "CONFIGURATION"} {
+		for _, keyword := range []string{"USAGE:", "COMMANDS:", "generate", "switch", "install", "uninstall", "status", "TYPICAL WORKFLOW", "CONFIGURATION"} {
 			assert.Contains(t, s, keyword, "top-level help for %q missing %q", arg, keyword)
 		}
 	}
@@ -59,6 +59,7 @@ func TestHelp_Subcommands(t *testing.T) {
 		{[]string{"modes", "--help"}, []string{"USAGE:", "DESCRIPTION:", "EXAMPLES:", "655 MHz"}, true},
 		{[]string{"install", "--help"}, []string{"USAGE:", "DESCRIPTION:", "EXAMPLES:", "rpm-ostree"}, true},
 		{[]string{"uninstall", "--help"}, []string{"USAGE:", "DESCRIPTION:", "EXAMPLES:", "--connector"}, true},
+		{[]string{"status", "--help"}, []string{"USAGE:", "DESCRIPTION:", "EXAMPLES:"}, true},
 		{[]string{"version", "--help"}, []string{"USAGE:", "EXAMPLES:"}, true},
 	}
 	for _, tc := range cases {

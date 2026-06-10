@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -78,6 +79,11 @@ func main() {
 		}
 	case "uninstall":
 		if err := runUninstall(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+	case "status":
+		if err := runStatus(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
@@ -353,4 +359,53 @@ func runUninstall(args []string) error {
 	}
 	_ = fs.Parse(args)
 	return installer.Uninstall(*connector, *yes, os.Stdin, os.Stdout)
+}
+
+func runStatus(args []string) error {
+	if wantsHelp(args) {
+		renderSubcommandHelp(os.Stdout, subcommandHelps["status"], nil)
+		return nil
+	}
+	fwPath := filepath.Join(installer.FirmwareDir, installer.EDIDName)
+	rep, err := installer.Status("/sys/class/drm", "/proc/cmdline", fwPath)
+	if errors.Is(err, installer.ErrNoSysfs) {
+		fmt.Println("display status is only available on Linux with DRM/KMS")
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	if rep.FirmwarePresent {
+		fmt.Printf("EDID injection status   (firmware: %s, %d bytes)\n\n", fwPath, rep.FirmwareBytes)
+	} else {
+		fmt.Printf("EDID injection status   (firmware: %s — MISSING)\n\n", fwPath)
+	}
+
+	if len(rep.Connectors) == 0 {
+		fmt.Println("No sunbeams EDID injection found.")
+		return nil
+	}
+
+	yn := func(b bool) string {
+		if b {
+			return "yes"
+		}
+		return "no"
+	}
+	fmt.Printf("  %-11s %-14s %-12s %-11s %-13s %s\n",
+		"CONNECTOR", "CONNECTED", "CONFIGURED", "THIS BOOT", "EDID LOADED", "STATE")
+	for _, c := range rep.Connectors {
+		connected := "disconnected"
+		if c.Connected {
+			connected = "connected"
+		}
+		fmt.Printf("  %-11s %-14s %-12s %-11s %-13s %s\n",
+			c.Name, connected, yn(c.Configured), yn(c.BootActive), yn(c.EDIDLoaded), c.Verdict)
+	}
+	fmt.Printf("\n%d connector(s) carry the sunbeams EDID.\n", len(rep.Connectors))
+	if !rep.RebootDetectable {
+		fmt.Println("(rpm-ostree unavailable — 'reboot pending' state could not be determined.)")
+	}
+	return nil
 }
