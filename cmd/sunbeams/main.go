@@ -358,6 +358,9 @@ func runUninstall(args []string) error {
 		return nil
 	}
 	_ = fs.Parse(args)
+	if rest := fs.Args(); len(rest) > 0 {
+		return fmt.Errorf("unexpected argument %q — use --connector %s to remove one connector", rest[0], rest[0])
+	}
 	return installer.Uninstall(*connector, *yes, os.Stdin, os.Stdout)
 }
 

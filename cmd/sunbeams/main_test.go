@@ -85,6 +85,15 @@ func TestHelp_UnknownCommand(t *testing.T) {
 	assert.Contains(t, s, "USAGE:", "should also print top-level help")
 }
 
+func TestUninstall_RejectsPositionalArg(t *testing.T) {
+	err := runUninstall([]string{"HDMI-A-1"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected argument")
+	assert.Contains(t, err.Error(), "--connector")
+	// Must NOT have fallen through to the installer (which would report the root check).
+	assert.NotContains(t, err.Error(), "root")
+}
+
 func buildBinary(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
