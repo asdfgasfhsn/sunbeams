@@ -8,6 +8,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
 )
 
 // Uninstall interactively removes what install added: sunbeams kernel args,
@@ -39,7 +41,7 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 	if err != nil {
 		return err
 	}
-	kargs := ParseSunbeamsKargs(cmdline, connector)
+	kargs := drm.ParseSunbeamsKargs(cmdline, connector)
 	// A merged drm.edid_firmware token references multiple connectors in one
 	// karg and cannot be removed for a single connector via --delete-if-present
 	// (deleting it would also drop the others). Refuse and point the user at a
@@ -75,7 +77,7 @@ func Uninstall(connector string, assumeYes bool, stdin io.Reader, stdout io.Writ
 	if connector == "" {
 		// 2. EDID firmware file. Removal failure is non-fatal: warn and continue
 		// so the final summary (and any reboot notice) still prints.
-		edidPath := filepath.Join(FirmwareDir, EDIDName)
+		edidPath := filepath.Join(drm.FirmwareDir, drm.EDIDName)
 		if _, statErr := os.Stat(edidPath); statErr == nil {
 			if confirm(fmt.Sprintf("Remove EDID firmware file %s? [y/N]: ", edidPath)) {
 				if err := os.Remove(edidPath); err != nil {

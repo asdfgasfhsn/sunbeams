@@ -11,6 +11,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/asdfgasfhsn/sunbeams/internal/config"
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
 	"github.com/asdfgasfhsn/sunbeams/internal/edid"
 	"github.com/asdfgasfhsn/sunbeams/internal/generate"
 	"github.com/asdfgasfhsn/sunbeams/internal/installer"
@@ -369,9 +370,9 @@ func runStatus(args []string) error {
 		renderSubcommandHelp(os.Stdout, subcommandHelps["status"], nil)
 		return nil
 	}
-	fwPath := filepath.Join(installer.FirmwareDir, installer.EDIDName)
+	fwPath := filepath.Join(drm.FirmwareDir, drm.EDIDName)
 	rep, err := installer.Status("/sys/class/drm", "/proc/cmdline", fwPath)
-	if errors.Is(err, installer.ErrNoSysfs) {
+	if errors.Is(err, drm.ErrNoSysfs) {
 		fmt.Println("display status is only available on Linux with DRM/KMS")
 		return nil
 	}

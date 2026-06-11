@@ -2,16 +2,11 @@ package installer
 
 import (
 	"bytes"
-	"errors"
 	"os"
-	"path/filepath"
 	"sort"
-	"strings"
-)
 
-// ErrNoSysfs is returned by Status when the DRM sysfs tree is absent
-// (e.g. on macOS), so callers can degrade gracefully.
-var ErrNoSysfs = errors.New("no DRM sysfs tree")
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
+)
 
 // ConnectorStatus is the per-connector EDID-injection state.
 type ConnectorStatus struct {
@@ -29,12 +24,6 @@ type Report struct {
 	FirmwarePresent  bool
 	FirmwareBytes    int  // size of the installed EDID, 0 if absent
 	RebootDetectable bool // false when rpm-ostree was unavailable
-}
-
-// sysfsConn is one connector's raw sysfs read.
-type sysfsConn struct {
-	Status string
-	EDID   []byte
 }
 
 // classify synthesizes a human-readable verdict from a connector's flags.
@@ -63,7 +52,7 @@ func classify(cs ConnectorStatus, firmwarePresent bool) string {
 // installed firmware bytes, and the raw sysfs reads. A connector is included if
 // it is configured, active this boot, or (when firmware is present) carries the
 // firmware's exact EDID bytes (orphan detection). Output is sorted by name.
-func buildReport(configured, boot []string, firmwareBytes []byte, firmwarePresent bool, conns map[string]sysfsConn) Report {
+func buildReport(configured, boot []string, firmwareBytes []byte, firmwarePresent bool, conns map[string]drm.SysfsConn) Report {
 	cfgSet := toSet(configured)
 	bootSet := toSet(boot)
 
@@ -112,43 +101,11 @@ func toSet(xs []string) map[string]bool {
 	return m
 }
 
-// scanConnectorEDID walks a DRM sysfs root and returns each HDMI/DP connector's
-// status and live EDID bytes, keyed by connector name (e.g. "DP-2"). Returns
-// ErrNoSysfs if the root does not exist.
-func scanConnectorEDID(root string) (map[string]sysfsConn, error) {
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, ErrNoSysfs
-		}
-		return nil, err
-	}
-	out := map[string]sysfsConn{}
-	for _, e := range entries {
-		name := e.Name() // e.g. "card0-DP-2"
-		dash := strings.Index(name, "-")
-		if dash < 0 {
-			continue
-		}
-		connector := name[dash+1:]
-		if !strings.HasPrefix(connector, "HDMI") && !strings.HasPrefix(connector, "DP") {
-			continue
-		}
-		st, err := os.ReadFile(filepath.Join(root, name, "status"))
-		if err != nil {
-			continue
-		}
-		edid, _ := os.ReadFile(filepath.Join(root, name, "edid")) // may be absent/empty
-		out[connector] = sysfsConn{Status: strings.TrimSpace(string(st)), EDID: edid}
-	}
-	return out, nil
-}
-
 // Status reports the sunbeams EDID-injection state for every connector. All
 // three paths are injectable for testing; the CLI passes "/sys/class/drm",
 // "/proc/cmdline", and the installed firmware path. Requires no root.
 func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
-	conns, err := scanConnectorEDID(sysfsRoot)
+	conns, err := drm.ScanConnectorEDID(sysfsRoot)
 	if err != nil {
 		return Report{}, err
 	}
@@ -164,8 +121,8 @@ func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
 		rebootDetectable = false
 	}
 
-	configured := connectorsFromKargs(ParseSunbeamsKargs(configuredRaw, ""))
-	boot := connectorsFromKargs(ParseSunbeamsKargs(string(cmdlineRaw), ""))
+	configured := drm.ConnectorsFromKargs(drm.ParseSunbeamsKargs(configuredRaw, ""))
+	boot := drm.ConnectorsFromKargs(drm.ParseSunbeamsKargs(string(cmdlineRaw), ""))
 
 	firmwareBytes, fwErr := os.ReadFile(firmwarePath)
 	firmwarePresent := fwErr == nil && len(firmwareBytes) > 0
@@ -173,25 +130,4 @@ func Status(sysfsRoot, cmdlinePath, firmwarePath string) (Report, error) {
 	rep := buildReport(configured, boot, firmwareBytes, firmwarePresent, conns)
 	rep.RebootDetectable = rebootDetectable
 	return rep, nil
-}
-
-// connectorsFromKargs extracts connector names from drm.edid_firmware tokens
-// (handles the merged comma form), de-duplicated, in first-seen order.
-func connectorsFromKargs(kargs []string) []string {
-	const edidPrefix = "drm.edid_firmware="
-	seen := map[string]bool{}
-	var out []string
-	for _, tok := range kargs {
-		if !strings.HasPrefix(tok, edidPrefix) {
-			continue
-		}
-		for _, pair := range strings.Split(strings.TrimPrefix(tok, edidPrefix), ",") {
-			conn, file, ok := strings.Cut(pair, ":")
-			if ok && file == EDIDName && !seen[conn] {
-				seen[conn] = true
-				out = append(out, conn)
-			}
-		}
-	}
-	return out
 }

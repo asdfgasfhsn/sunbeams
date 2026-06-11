@@ -9,11 +9,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-)
 
-const (
-	FirmwareDir = "/etc/firmware"
-	EDIDName    = "edid.bin"
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
 )
 
 // Run drives the interactive installer: writes EDID to firmware,
@@ -28,7 +25,7 @@ func Run(edidBytes []byte, modesScript []byte, stdin io.Reader, stdout io.Writer
 
 	// 0. Detect and offer to clean stale sunbeams kargs (idempotent re-install).
 	if cmdline, err := CurrentKargs(); err == nil {
-		if stale := ParseSunbeamsKargs(cmdline, ""); len(stale) > 0 {
+		if stale := drm.ParseSunbeamsKargs(cmdline, ""); len(stale) > 0 {
 			fmt.Fprintln(stdout, "Existing sunbeams kernel arguments detected:") //nolint:errcheck // progress to stdout; unactionable
 			for _, k := range stale {
 				fmt.Fprintf(stdout, "  %s\n", k) //nolint:errcheck // progress to stdout; unactionable
@@ -46,17 +43,17 @@ func Run(edidBytes []byte, modesScript []byte, stdin io.Reader, stdout io.Writer
 	}
 
 	// 1. Install EDID
-	if err := os.MkdirAll(FirmwareDir, 0o755); err != nil {
+	if err := os.MkdirAll(drm.FirmwareDir, 0o755); err != nil {
 		return err
 	}
-	edidPath := filepath.Join(FirmwareDir, EDIDName)
+	edidPath := filepath.Join(drm.FirmwareDir, drm.EDIDName)
 	if err := os.WriteFile(edidPath, edidBytes, 0o644); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "✓ Installed EDID to %s (%d bytes)\n", edidPath, len(edidBytes)) //nolint:errcheck // progress message to stdout; unactionable
 
 	// 2. Scan connectors
-	cons, err := ScanConnectors()
+	cons, err := drm.ScanConnectors()
 	if err != nil {
 		return fmt.Errorf("scan connectors: %w", err)
 	}
@@ -94,7 +91,7 @@ func Run(edidBytes []byte, modesScript []byte, stdin io.Reader, stdout io.Writer
 	}
 
 	// 4. Inject kargs
-	kargs := BuildKargs(FirmwareDir, output, EDIDName)
+	kargs := drm.BuildKargs(drm.FirmwareDir, output, drm.EDIDName)
 	if err := InjectKargs(kargs); err != nil {
 		return err
 	}

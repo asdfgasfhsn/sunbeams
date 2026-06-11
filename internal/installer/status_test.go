@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
 )
 
 func TestClassify(t *testing.T) {
@@ -61,22 +63,9 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-func TestConnectorsFromKargs(t *testing.T) {
-	assert.Equal(t, []string{"DP-2"}, connectorsFromKargs([]string{
-		"drm.edid_firmware=DP-2:edid.bin", "video=DP-2:e", "firmware_class.path=/etc/firmware",
-	}))
-	assert.Equal(t, []string{"HDMI-A-1", "DP-2"}, connectorsFromKargs([]string{
-		"drm.edid_firmware=HDMI-A-1:edid.bin", "drm.edid_firmware=DP-2:edid.bin",
-	}))
-	assert.Equal(t, []string{"DP-2", "HDMI-A-1"}, connectorsFromKargs([]string{
-		"drm.edid_firmware=DP-2:edid.bin,HDMI-A-1:edid.bin",
-	}))
-	assert.Nil(t, connectorsFromKargs([]string{"video=DP-2:e", "firmware_class.path=/etc/firmware"}))
-}
-
 func TestBuildReport(t *testing.T) {
 	fw := []byte("EDID-BYTES-768")
-	conns := map[string]sysfsConn{
+	conns := map[string]drm.SysfsConn{
 		"DP-2":     {Status: "disconnected", EDID: fw},                  // configured+boot+loaded
 		"HDMI-A-1": {Status: "connected", EDID: []byte("real-monitor")}, // configured, not yet booted
 	}
@@ -110,7 +99,7 @@ func TestBuildReport(t *testing.T) {
 
 func TestBuildReport_OrphanFromMatchingEDID(t *testing.T) {
 	fw := []byte("OURS")
-	conns := map[string]sysfsConn{
+	conns := map[string]drm.SysfsConn{
 		"DP-1": {Status: "connected", EDID: fw}, // edid matches but not in any kargs
 	}
 	rep := buildReport(nil, nil, fw, true, conns)
@@ -121,7 +110,7 @@ func TestBuildReport_OrphanFromMatchingEDID(t *testing.T) {
 }
 
 func TestBuildReport_NoFirmwareMarksIncomplete(t *testing.T) {
-	conns := map[string]sysfsConn{"DP-2": {Status: "disconnected", EDID: nil}}
+	conns := map[string]drm.SysfsConn{"DP-2": {Status: "disconnected", EDID: nil}}
 	rep := buildReport([]string{"DP-2"}, []string{"DP-2"}, nil, false, conns)
 	assert.False(t, rep.FirmwarePresent)
 	assert.Len(t, rep.Connectors, 1)
@@ -137,24 +126,6 @@ func writeConnector(t *testing.T, root, dir, status string, edid []byte) {
 	if edid != nil {
 		require.NoError(t, os.WriteFile(filepath.Join(d, "edid"), edid, 0o644))
 	}
-}
-
-func TestScanConnectorEDID(t *testing.T) {
-	root := t.TempDir()
-	writeConnector(t, root, "card0-DP-2", "disconnected\n", []byte("OURS"))
-	writeConnector(t, root, "card0-eDP-1", "connected\n", []byte("laptop")) // not HDMI/DP — ignored
-
-	got, err := scanConnectorEDID(root)
-	require.NoError(t, err)
-	require.Contains(t, got, "DP-2")
-	assert.Equal(t, "disconnected", got["DP-2"].Status)
-	assert.Equal(t, []byte("OURS"), got["DP-2"].EDID)
-	assert.NotContains(t, got, "eDP-1")
-}
-
-func TestScanConnectorEDID_NoSysfs(t *testing.T) {
-	_, err := scanConnectorEDID(filepath.Join(t.TempDir(), "does-not-exist"))
-	assert.ErrorIs(t, err, ErrNoSysfs)
 }
 
 // TestStatus_FallbackNoRpmOstree exercises the full orchestrator against temp
@@ -191,12 +162,12 @@ func TestStatus_FallbackNoRpmOstree(t *testing.T) {
 
 func TestStatus_NoSysfs(t *testing.T) {
 	_, err := Status(filepath.Join(t.TempDir(), "missing"), "/proc/cmdline", "/etc/firmware/edid.bin")
-	assert.ErrorIs(t, err, ErrNoSysfs)
+	assert.ErrorIs(t, err, drm.ErrNoSysfs)
 }
 
 func TestBuildReport_EmptyFirmwareNoFalseMatch(t *testing.T) {
 	// A 0-byte firmware must not match a disconnected connector's nil/empty EDID.
-	conns := map[string]sysfsConn{
+	conns := map[string]drm.SysfsConn{
 		"DP-2": {Status: "disconnected", EDID: nil},   // configured
 		"DP-1": {Status: "connected", EDID: []byte{}}, // unconfigured — must NOT become an orphan
 	}
