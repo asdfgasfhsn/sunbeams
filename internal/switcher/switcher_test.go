@@ -65,3 +65,14 @@ func TestResolveOutputs_DetectErrorPropagates(t *testing.T) {
 	_, _, _, _, err := resolveOutputs(Outputs{})
 	require.Error(t, err)
 }
+
+func TestResolveOutputs_PhysicalEnvCommaList(t *testing.T) {
+	t.Setenv("VIRTUAL_OUTPUT", "")
+	t.Setenv("PHYSICAL_OUTPUT", "DP-1, HDMI-A-2")
+	withStubs(t, "DP-2", nil, nil)
+	virt, phys, _, psrc, err := resolveOutputs(Outputs{})
+	require.NoError(t, err)
+	assert.Equal(t, "DP-2", virt)
+	assert.Equal(t, []string{"DP-1", "HDMI-A-2"}, phys) // order preserved, spaces trimmed
+	assert.Equal(t, "env:PHYSICAL_OUTPUT", psrc)
+}

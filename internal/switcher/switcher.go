@@ -51,7 +51,12 @@ func resolveOutputs(o Outputs) (virt string, phys []string, virtSrc, physSrc str
 	case o.Physical != "":
 		phys, physSrc = []string{o.Physical}, "flag"
 	case os.Getenv("PHYSICAL_OUTPUT") != "":
-		phys, physSrc = []string{os.Getenv("PHYSICAL_OUTPUT")}, "env:PHYSICAL_OUTPUT"
+		for _, p := range strings.Split(os.Getenv("PHYSICAL_OUTPUT"), ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				phys = append(phys, p)
+			}
+		}
+		physSrc = "env:PHYSICAL_OUTPUT"
 	default:
 		physSrc = "auto"
 		cons, scanErr := scanConnectors()
@@ -69,6 +74,14 @@ func resolveOutputs(o Outputs) (virt string, phys []string, virtSrc, physSrc str
 	return virt, phys, virtSrc, physSrc, nil
 }
 
+// physLabel renders the physical-output list for logging.
+func physLabel(phys []string) string {
+	if len(phys) == 0 {
+		return "none (headless)"
+	}
+	return strings.Join(phys, ", ")
+}
+
 // SwitchOn disables the physical output(s), enables the virtual one, and sets
 // the mode. The hdrRequested parameter is logged but not applied — KDE HDR
 // toggling is handled via user settings or external tools (kscreen-doctor
@@ -81,7 +94,7 @@ func SwitchOn(cfg *config.Config, outs Outputs, width, height, fps int, hdrReque
 
 	info("switch on: requested %dx%d@%d hdr=%t", width, height, fps, hdrRequested)
 	info("virtual connector:  %s (%s)", virt, virtSrc)
-	info("physical connectors: %v (%s)", phys, physSrc)
+	info("physical connectors: %s (%s)", physLabel(phys), physSrc)
 	logSunshineInputs()
 
 	if hdrRequested {
@@ -145,7 +158,7 @@ func SwitchOff(outs Outputs) error {
 	}
 	info("switch off: restoring physical display(s)")
 	info("virtual connector:  %s (%s)", virt, virtSrc)
-	info("physical connectors: %v (%s)", phys, physSrc)
+	info("physical connectors: %s (%s)", physLabel(phys), physSrc)
 
 	args := []string{"output." + virt + ".disable"}
 	for _, p := range phys {
@@ -155,7 +168,7 @@ func SwitchOff(outs Outputs) error {
 		errLog("switch off failed: %v", err)
 		return err
 	}
-	info("switch off complete: %s disabled, physical(s) %v re-enabled", virt, phys)
+	info("switch off complete: %s disabled, physical(s) %s re-enabled", virt, physLabel(phys))
 	for _, p := range phys {
 		if err := logReadback(p); err != nil {
 			warn("could not read back display state for %s: %v", p, err)
