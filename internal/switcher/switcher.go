@@ -3,51 +3,98 @@ package switcher
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/asdfgasfhsn/sunbeams/internal/config"
+	"github.com/asdfgasfhsn/sunbeams/internal/drm"
 )
 
 // Outputs names the connectors involved. Empty fields fall back to env
-// VIRTUAL_OUTPUT / PHYSICAL_OUTPUT and finally to HDMI-A-1 / DP-1.
+// VIRTUAL_OUTPUT / PHYSICAL_OUTPUT and finally to auto-detection.
 type Outputs struct {
 	Virtual  string
 	Physical string
 }
 
-// resolve returns the final virtual/physical connector names along with a
-// human-readable source tag for each ("flag", "env:VIRTUAL_OUTPUT", "default").
-func (o Outputs) resolve() (virt, phys, virtSrc, physSrc string) {
-	virt, virtSrc = o.Virtual, "flag"
-	if virt == "" {
-		if v := os.Getenv("VIRTUAL_OUTPUT"); v != "" {
-			virt, virtSrc = v, "env:VIRTUAL_OUTPUT"
-		} else {
-			virt, virtSrc = "HDMI-A-1", "default"
-		}
-	}
-	phys, physSrc = o.Physical, "flag"
-	if phys == "" {
-		if v := os.Getenv("PHYSICAL_OUTPUT"); v != "" {
-			phys, physSrc = v, "env:PHYSICAL_OUTPUT"
-		} else {
-			phys, physSrc = "DP-1", "default"
-		}
-	}
-	return
+// detectVirtual and scanConnectors are package-level seams so tests can stub
+// auto-detection without real hardware.
+var detectVirtual = func() (string, error) {
+	return drm.DetectVirtual("/sys/class/drm", "/proc/cmdline",
+		filepath.Join(drm.FirmwareDir, drm.EDIDName))
 }
 
-// SwitchOn disables the physical output, enables the virtual one, and sets
+var scanConnectors = drm.ScanConnectors
+
+// resolveOutputs determines the virtual connector and the physical connectors
+// to disable. Virtual: explicit flag → VIRTUAL_OUTPUT → auto-detect (error if
+// unresolved). Physical: explicit flag → PHYSICAL_OUTPUT → every connected
+// connector that is not the virtual one (empty when headless; scan errors are
+// non-fatal).
+func resolveOutputs(o Outputs) (virt string, phys []string, virtSrc, physSrc string, err error) {
+	switch {
+	case o.Virtual != "":
+		virt, virtSrc = o.Virtual, "flag"
+	case os.Getenv("VIRTUAL_OUTPUT") != "":
+		virt, virtSrc = os.Getenv("VIRTUAL_OUTPUT"), "env:VIRTUAL_OUTPUT"
+	default:
+		virt, err = detectVirtual()
+		if err != nil {
+			return "", nil, "", "", fmt.Errorf("auto-detect virtual display: %w", err)
+		}
+		virtSrc = "auto"
+	}
+
+	switch {
+	case o.Physical != "":
+		phys, physSrc = []string{o.Physical}, "flag"
+	case os.Getenv("PHYSICAL_OUTPUT") != "":
+		for _, p := range strings.Split(os.Getenv("PHYSICAL_OUTPUT"), ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				phys = append(phys, p)
+			}
+		}
+		physSrc = "env:PHYSICAL_OUTPUT"
+	default:
+		physSrc = "auto"
+		cons, scanErr := scanConnectors()
+		if scanErr != nil {
+			warn("could not scan connectors for physical outputs: %v", scanErr)
+			break
+		}
+		for _, c := range cons {
+			if c.Status == "connected" && c.Name != virt {
+				phys = append(phys, c.Name)
+			}
+		}
+		sort.Strings(phys)
+	}
+	return virt, phys, virtSrc, physSrc, nil
+}
+
+// physLabel renders the physical-output list for logging.
+func physLabel(phys []string) string {
+	if len(phys) == 0 {
+		return "none (headless)"
+	}
+	return strings.Join(phys, ", ")
+}
+
+// SwitchOn disables the physical output(s), enables the virtual one, and sets
 // the mode. The hdrRequested parameter is logged but not applied — KDE HDR
 // toggling is handled via user settings or external tools (kscreen-doctor
 // has no mode-bundled HDR argument).
 func SwitchOn(cfg *config.Config, outs Outputs, width, height, fps int, hdrRequested bool) error {
-	virt, phys, virtSrc, physSrc := outs.resolve()
+	virt, phys, virtSrc, physSrc, err := resolveOutputs(outs)
+	if err != nil {
+		return err
+	}
 
 	info("switch on: requested %dx%d@%d hdr=%t", width, height, fps, hdrRequested)
 	info("virtual connector:  %s (%s)", virt, virtSrc)
-	info("physical connector: %s (%s)", phys, physSrc)
+	info("physical connectors: %s (%s)", physLabel(phys), physSrc)
 	logSunshineInputs()
 
 	if hdrRequested {
@@ -67,26 +114,31 @@ func SwitchOn(cfg *config.Config, outs Outputs, width, height, fps int, hdrReque
 			width, height, fps, match)
 	}
 
-	args := []string{
-		"output." + phys + ".disable",
-		"output." + virt + ".enable",
-		"output." + virt + ".mode." + match.String(),
+	var args []string
+	for _, p := range phys {
+		args = append(args, "output."+p+".disable")
 	}
+	args = append(args,
+		"output."+virt+".enable",
+		"output."+virt+".mode."+match.String(),
+	)
 	info("applying switch atomically")
 	if err := runKScreen(args...); err != nil {
 		warn("atomic switch failed: %v", err)
-		info("retrying in three steps with a 2s delay before mode-set")
-		if err := runKScreen("output." + phys + ".disable"); err != nil {
-			errLog("retry step 1 (disable physical) failed: %v", err)
-			return err
+		info("retrying in steps with a 2s delay before mode-set")
+		for _, p := range phys {
+			if err := runKScreen("output." + p + ".disable"); err != nil {
+				errLog("retry step (disable physical %s) failed: %v", p, err)
+				return err
+			}
 		}
 		if err := runKScreen("output." + virt + ".enable"); err != nil {
-			errLog("retry step 2 (enable virtual) failed: %v", err)
+			errLog("retry step (enable virtual) failed: %v", err)
 			return err
 		}
 		time.Sleep(2 * time.Second)
 		if err := runKScreen("output." + virt + ".mode." + match.String()); err != nil {
-			errLog("retry step 3 (mode set) failed: %v", err)
+			errLog("retry step (mode set) failed: %v", err)
 			return err
 		}
 	}
@@ -98,23 +150,29 @@ func SwitchOn(cfg *config.Config, outs Outputs, width, height, fps int, hdrReque
 	return nil
 }
 
-// SwitchOff disables the virtual output and re-enables the physical one.
+// SwitchOff disables the virtual output and re-enables the physical one(s).
 func SwitchOff(outs Outputs) error {
-	virt, phys, virtSrc, physSrc := outs.resolve()
-	info("switch off: restoring physical display")
+	virt, phys, virtSrc, physSrc, err := resolveOutputs(outs)
+	if err != nil {
+		return err
+	}
+	info("switch off: restoring physical display(s)")
 	info("virtual connector:  %s (%s)", virt, virtSrc)
-	info("physical connector: %s (%s)", phys, physSrc)
+	info("physical connectors: %s (%s)", physLabel(phys), physSrc)
 
-	if err := runKScreen(
-		"output."+virt+".disable",
-		"output."+phys+".enable",
-	); err != nil {
+	args := []string{"output." + virt + ".disable"}
+	for _, p := range phys {
+		args = append(args, "output."+p+".enable")
+	}
+	if err := runKScreen(args...); err != nil {
 		errLog("switch off failed: %v", err)
 		return err
 	}
-	info("switch off complete: %s disabled, %s re-enabled", virt, phys)
-	if err := logReadback(phys); err != nil {
-		warn("could not read back display state: %v", err)
+	info("switch off complete: %s disabled, physical(s) %s re-enabled", virt, physLabel(phys))
+	for _, p := range phys {
+		if err := logReadback(p); err != nil {
+			warn("could not read back display state for %s: %v", p, err)
+		}
 	}
 	return nil
 }

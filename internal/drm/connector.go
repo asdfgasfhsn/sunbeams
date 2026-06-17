@@ -1,4 +1,4 @@
-package installer
+package drm
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Connector is a DRM/KMS display connector and its connection status.
 type Connector struct {
 	Name   string
 	Status string
