@@ -10,7 +10,8 @@ Sunbeams is a single-binary toolkit for running a headless [Sunshine](https://gi
 
 - **EDID generation** — synthesise a custom EDID that exposes every resolution your [Moonlight](https://moonlight-stream.org/) clients need (4K, ultrawide, MacBook, iPad, phones, handhelds) in a single binary, with HDR10/HLG metadata and wide range limits.
 - **Display switching** — a drop-in `Do`/`Undo` handler for Sunshine's prep commands that reads `SUNSHINE_CLIENT_*` env vars, snaps the request to the nearest configured mode, and drives `kscreen-doctor` atomically. Emits structured, timestamped logs of every decision and every command dispatched so you can debug a stream without SSHing in.
-- **Guided Bazzite install** — scans `/sys/class/drm` for an unused connector, writes the EDID to `/etc/firmware/`, and injects the required kernel arguments via `rpm-ostree kargs`, accounting for Bazzite's immutable `/usr` and early-KMS constraints.
+- **Guided Bazzite install / uninstall** — `sunbeams install` scans `/sys/class/drm` for an unused connector, writes the EDID to `/etc/firmware/`, and injects the required kernel arguments via `rpm-ostree kargs`, accounting for Bazzite's immutable `/usr` and early-KMS constraints. `sunbeams uninstall` reverses it — detecting and removing the kargs, firmware file, and systemd user service it added.
+- **Status introspection** — `sunbeams status` reports, per connector, whether the virtual EDID is configured, active this boot, and actually loaded — distinguishing a live injection from one that's only pending a reboot.
 - **Config + introspection** — TOML-based configuration for devices/modes with `sunbeams config init`/`show`, and `sunbeams devices`/`modes` commands for inspecting what will be encoded into the EDID.
 
 ## The Problem
@@ -98,14 +99,20 @@ sunbeams generate
 #    inject kernel args via rpm-ostree, then reboot.
 sudo sunbeams install
 
-# 3. Inspect what will be exposed to clients
+# 3. After rebooting, confirm the EDID is injected and loaded
+sunbeams status         # per-connector: configured / active this boot / EDID loaded
+
+# 4. Inspect what will be exposed to clients
 sunbeams devices        # configured target devices
 sunbeams modes          # every EDID mode + pixel clock + DTD/xrandr status
 
-# 4. Wire it into Sunshine → Configuration → General → global prep commands:
+# 5. Wire it into Sunshine → Configuration → General → global prep commands:
 #      Do command:   sunbeams switch on
 #      Undo command: sunbeams switch off
 #    (Sunshine passes SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS/HDR automatically.)
+
+# To reverse the install later (removes kargs, firmware, and the user service):
+sudo sunbeams uninstall
 ```
 
 See [docs/installation-bazzite.md](docs/installation-bazzite.md) for the manual install path and [docs/sunshine.md](docs/sunshine.md) for the full Sunshine integration, logging reference, and `SUNBEAMS_DEBUG` usage.
@@ -121,6 +128,8 @@ Run `sunbeams <command> --help` for per-command flags.
 | `sunbeams devices` | List all configured client devices with their target resolution and refresh rate. |
 | `sunbeams modes` | List all EDID modes with pixel clock and whether they're encoded as DTDs or require xrandr. |
 | `sunbeams install` | Guided interactive installer for Bazzite (requires `sudo`). Writes the EDID to `/etc/firmware/`, scans DRM connectors, and injects kernel arguments via `rpm-ostree kargs`. |
+| `sunbeams uninstall` | Reverse an install (requires `sudo`). Detects and removes the sunbeams kernel args, the `/etc/firmware/edid.bin` file, and the systemd user service. Scope to one output with `--connector <name>`; skip prompts with `-y`. |
+| `sunbeams status` | Read-only (no `sudo`). Report per connector whether the virtual EDID is configured, active this boot, and loaded — distinguishing `active` from `configured — reboot pending`. |
 | `sunbeams config init` | Write the default configuration to `~/.config/sunbeams/config.toml` as a starting template for customization. |
 | `sunbeams config show` | Print the current effective configuration (defaults merged with any user overrides). |
 | `sunbeams version` | Print version, commit, and build date. |
