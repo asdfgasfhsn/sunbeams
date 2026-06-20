@@ -22,7 +22,7 @@ Run `make` (no args) to list all targets with descriptions. Common ones:
 - `make check` — fmt + lint + tests + golden-file verification
 - `make snapshot` — build a goreleaser snapshot (cross-compile amd64 + arm64)
 
-CLI subcommands: `sunbeams generate|switch|devices|modes|install|config|version`. Run `./sunbeams` with no args for usage.
+CLI subcommands: `sunbeams generate|switch|devices|modes|install|uninstall|status|config|version`. Run `./sunbeams` with no args for usage.
 
 ## Key Files / Packages
 
